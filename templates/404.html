@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Page Not Found - Pakistan Army{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 50px;">
+    <h1 style="font-size: 72px; color: #1a472a; margin-bottom: 20px;">404</h1>
+    <h2 style="color: #666; margin-bottom: 30px;">Page Not Found</h2>
+    <p style="color: #888; margin-bottom: 30px;">The requested page could not be found.</p>
+    <a href="{{ url_for('index') }}" style="background: #1a472a; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Return to Home</a>
+</div>
+{% endblock %}

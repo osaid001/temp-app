@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management - Notifications</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="40" r="1" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            opacity: 0.4;
+            z-index: 1;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+            border-bottom: 3px solid #d4af37;
+        }
+
+        .navbar h1 {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            color: #fff;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .navbar-links a:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #d4af37;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header h2 {
+            color: #fff;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .actions-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary { background: linear-gradient(145deg, #6c757d, #545b62); color: white; }
+        .btn-secondary:hover { background: linear-gradient(145deg, #545b62, #6c757d); }
+        .btn-danger { background: linear-gradient(145deg, #dc3545, #c82333); color: white; }
+        .btn-danger:hover { background: linear-gradient(145deg, #c82333, #dc3545); }
+        .btn-success { background: linear-gradient(145deg, #28a745, #218838); color: white; }
+        .btn-success:hover { background: linear-gradient(145deg, #218838, #28a745); }
+        .btn-info { background: linear-gradient(145deg, #17a2b8, #138496); color: white; }
+        .btn-info:hover { background: linear-gradient(145deg, #138496, #17a2b8); }
+        .btn-warning { background: linear-gradient(145deg, #ffc107, #e0a800); color: #212529; }
+        .btn-warning:hover { background: linear-gradient(145deg, #e0a800, #ffc107); }
+        .btn-sm { padding: 8px 16px; font-size: 12px; }
+
+        .filter-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .filter-section h3 {
+            color: #1a472a;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a472a;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #b8941f;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            padding: 25px;
+            overflow-x: auto;
+        }
+
+        .notification-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .notification-table th,
+        .notification-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .notification-table th {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 0;
+        }
+
+        .notification-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .notification-table tr:hover {
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status.active { background: #28a745; color: white; }
+        .status.inactive { background: #dc3545; color: white; }
+
+        .type-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .type-badge.alert { background: #dc3545; color: white; }
+        .type-badge.warning { background: #ffc107; color: #212529; }
+        .type-badge.info { background: #17a2b8; color: white; }
+        .type-badge.maintenance { background: #28a745; color: white; }
+
+        .logout-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .logout-modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 2px solid #d4af37;
+            text-align: center;
+        }
+
+        .logout-modal h3 {
+            color: #1a472a;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .modal-btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #545b62;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+        }
+
+        .modal-btn-confirm:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+        }
+
+        .error-message, .success-message {
+            display: none;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            border-left: 4px solid #dc3545;
+        }
+
+        .success-message {
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid #28a745;
+        }
+
+        .error-message:not(:empty), .success-message:not(:empty) {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #1a472a;
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .actions-container { flex-direction: column; }
+            .btn { width: 100%; text-align: center; }
+            .filter-form { flex-direction: column; }
+            .form-group { min-width: 100%; }
+            .navbar { padding: 15px 20px; flex-direction: column; gap: 15px; }
+            .navbar h1 { font-size: 24px; }
+            .page-header { flex-direction: column; gap: 15px; text-align: center; }
+            .modal-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Fleet Management Dashboard</h1>
+        <div class="navbar-links">
+            <a href="dashboard" onclick="navigateToDashboard(event)">Dashboard</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Notifications Management</h2>
+        </div>
+
+        <div class="actions-container">
+            <button class="btn btn-info" onclick="refreshNotifications()">Refresh</button>
+            <button class="btn btn-success" onclick="markAllAsRead()">Mark All Read</button>
+            <button class="btn btn-warning" onclick="clearOldNotifications()">Clear Old</button>
+            <button class="btn btn-danger" onclick="clearAllNotifications()">Clear All</button>
+        </div>
+
+        <div class="filter-section">
+            <h3>Filter & Search Notifications</h3>
+            <div class="filter-form">
+                <div class="form-group">
+                    <label for="searchVehicleId">Search by Vehicle ID</label>
+                    <input type="text" id="searchVehicleId" placeholder="Enter vehicle ID...">
+                </div>
+                <div class="form-group">
+                    <label for="filterType">Filter by Type</label>
+                    <select id="filterType">
+                        <option value="">All Types</option>
+                        <option value="alert">Alert</option>
+                        <option value="warning">Warning</option>
+                        <option value="info">Info</option>
+                        <option value="maintenance">Maintenance</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterStatus">Filter by Status</label>
+                    <select id="filterStatus">
+                        <option value="">All Status</option>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+                <button class="btn" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+
+        <div class="table-container">
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                Loading notifications...
+            </div>
+            <table class="notification-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Vehicle ID</th>
+                        <th>Message</th>
+                        <th>Timestamp</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="notificationTable">
+                    <tr>
+                        <td colspan="7" style="text-align:center;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="logoutModal" class="logout-modal">
+        <div class="logout-modal-content">
+            <h3>Logout Confirmation</h3>
+            <p>Are you sure you want to logout?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let allNotifications = [];
+        let filteredNotifications = [];
+
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotifications();
+        });
+
+        // Navigation functions
+        function navigateToDashboard(event) {
+            event.preventDefault();
+            try {
+                const dashboardUrl = './dashboard'; // Adjust path if dashboard.html is in a different directory
+                window.location.href = dashboardUrl;
+            } catch (error) {
+                showError('Failed to navigate to dashboard: ' + error.message);
+                console.error('Navigation error:', error);
+            }
+        }
+
+        // Logout functions
+        function logout() {
+            try {
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal) {
+                    logoutModal.style.display = 'block';
+                } else {
+                    showError('Logout modal not found.');
+                }
+            } catch (error) {
+                showError('Error opening logout modal: ' + error.message);
+            }
+        }
+
+        function closeLogoutModal() {
+            try {
+                const logoutModal = document.getElementById('logoutModal');
+                if (logoutModal) {
+                    logoutModal.style.display = 'none';
+                }
+            } catch (error) {
+                showError('Error closing logout modal: ' + error.message);
+            }
+        }
+
+        function confirmLogout() {
+            try {
+                sessionStorage.clear();
+                localStorage.clear();
+                const logoutUrl = '/login.html'; // Update to your actual logout endpoint or page
+                window.location.href = logoutUrl;
+            } catch (error) {
+                showError('Logout error: ' + error.message);
+                window.location.href = '/login.html'; // Fallback to login page
+            }
+        }
+
+        // Load notifications from backend - preserving your original logic
+        function loadNotifications() {
+            showLoading(true);
+            fetch('/api/notifications')
+                .then(res => res.json())
+                .then(data => {
+                    allNotifications = data;
+                    displayNotifications(data);
+                    showLoading(false);
+                })
+                .catch(err => {
+                    console.error("Error loading notifications:", err);
+                    showError("Failed to load notifications: " + err.message);
+                    showLoading(false);
+                });
+        }
+
+        // Display notifications in table - enhanced version of your original
+        function displayNotifications(notifications) {
+            const tableBody = document.getElementById("notificationTable");
+            tableBody.innerHTML = "";
+
+            if (notifications.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No notifications found</td></tr>';
+                return;
+            }
+
+            notifications.forEach(n => {
+                const typeClass = getTypeClass(n.type);
+                const statusClass = n.status === 'Active' ? 'active' : 'inactive';
+
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${n.id}</td>
+                        <td><span class="type-badge ${typeClass}">${n.type}</span></td>
+                        <td>${n.vehicle_id}</td>
+                        <td>${n.message}</td>
+                        <td>${formatTimestamp(n.timestamp)}</td>
+                        <td><span class="status-badge status ${statusClass}">${n.status}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewNotification(${n.id})">View</button>
+                            <button class="btn btn-sm btn-warning" onclick="markAsRead(${n.id})">Mark Read</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteNotification(${n.id})">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Helper functions
+        function getTypeClass(type) {
+            switch(type.toLowerCase()) {
+                case 'alert': return 'alert';
+                case 'warning': return 'warning';
+                case 'info': return 'info';
+                case 'maintenance': return 'maintenance';
+                default: return 'info';
+            }
+        }
+
+        function formatTimestamp(timestamp) {
+            const date = new Date(timestamp);
+            return date.toLocaleString('en-US');
+        }
+
+        // Filter functions
+        function applyFilters() {
+            showLoading(true);
+            const vehicleId = document.getElementById('searchVehicleId').value.toLowerCase();
+            const type = document.getElementById('filterType').value.toLowerCase();
+            const status = document.getElementById('filterStatus').value;
+
+            filteredNotifications = allNotifications.filter(notification => {
+                const matchesVehicleId = !vehicleId || notification.vehicle_id.toString().toLowerCase().includes(vehicleId);
+                const matchesType = !type || notification.type.toLowerCase() === type;
+                const matchesStatus = !status || notification.status === status;
+
+                return matchesVehicleId && matchesType && matchesStatus;
+            });
+
+            displayNotifications(filteredNotifications);
+            showLoading(false);
+            showSuccess(Filtered ${filteredNotifications.length} notifications);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchVehicleId').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterStatus').value = '';
+            displayNotifications(allNotifications);
+            showSuccess('Filters reset');
+        }
+
+        // Action functions
+        function refreshNotifications() {
+            showSuccess('Refreshing notifications...');
+            loadNotifications();
+        }
+
+        function markAllAsRead() {
+            showSuccess('All notifications marked as read');
+            // Implement backend call to mark all as read
+        }
+
+        function clearOldNotifications() {
+            showSuccess('Old notifications cleared');
+            // Implement backend call to clear old notifications
+        }
+
+        function clearAllNotifications() {
+            if (confirm('Are you sure you want to clear all notifications?')) {
+                showSuccess('All notifications cleared');
+                // Implement backend call to clear all notifications
+            }
+        }
+
+        function viewNotification(id) {
+            showSuccess(Viewing notification: ${id});
+            // Implement view functionality
+        }
+
+        function markAsRead(id) {
+            showSuccess(Notification ${id} marked as read);
+            // Implement backend call to mark as read
+        }
+
+        function deleteNotification(id) {
+            if (confirm('Are you sure you want to delete this notification?')) {
+                showSuccess(Notification ${id} deleted);
+                // Implement backend call to delete notification
+                loadNotifications(); // Refresh the list
+            }
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            if (loadingIndicator) {
+                loadingIndicator.style.display = show ? 'block' : 'none';
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+                setTimeout(() => {
+                    errorDiv.style.display = 'none';
+                    errorDiv.textContent = '';
+                }, 5000);
+            }
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            if (successDiv) {
+                successDiv.textContent = message;
+                successDiv.style.display = 'block';
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                    successDiv.textContent = '';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+</html>

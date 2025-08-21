@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pakistan Army - Login Portal</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="40" r="1" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            opacity: 0.4;
+            z-index: 1;
+        }
+
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 3;
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .header p {
+            color: #d4d4d4;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .logos-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 40px;
+            z-index: 3;
+            position: relative;
+        }
+
+        .logo-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #2d5a3d, #1a472a);
+            border: 3px solid #d4af37;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo-circle::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            bottom: 2px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #3a6b4a, #2d5a3d);
+            z-index: 1;
+        }
+
+        .logo-circle img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+            z-index: 2;
+            position: relative;
+            filter: brightness(1.2) contrast(1.1);
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #d4af37;
+            z-index: 2;
+            position: relative;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .logo-label {
+            color: #fff;
+            font-size: 12px;
+            margin-top: 8px;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            padding: 40px;
+            width: 400px;
+            max-width: 90%;
+            position: relative;
+            z-index: 3;
+            border: 2px solid #d4af37;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h2 {
+            color: #1a472a;
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            color: #1a472a;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #fff;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #d4af37;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: #999;
+        }
+
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .login-button:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .login-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .flash-message {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-left: 4px solid #d4af37;
+            animation: slideIn 0.3s ease;
+        }
+
+        .flash-error {
+            border-left-color: #dc3545;
+            color: #dc3545;
+        }
+
+        .flash-success {
+            border-left-color: #28a745;
+            color: #28a745;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .footer {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            color: #d4d4d4;
+            font-size: 12px;
+            z-index: 3;
+        }
+
+        @media (max-width: 768px) {
+            .logos-container {
+                gap: 20px;
+            }
+
+            .logo-circle {
+                width: 60px;
+                height: 60px;
+            }
+
+            .logo-circle img {
+                width: 35px;
+                height: 35px;
+            }
+
+            .logo-text {
+                font-size: 14px;
+            }
+
+            .login-container {
+                padding: 30px 20px;
+                margin: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PAKISTAN ARMY</h1>
+        <p>Iman, Taqwa, Jihad fi Sabilillah</p>
+    </div>
+
+    <!-- Flash Messages -->
+    <div class="flash-messages" id="flashMessages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {% if category == 'error' %}flash-error{% else %}flash-success{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="logos-container">
+        <div class="logo-wrapper">
+            <div class="logo-circle">
+                <img src="{{ url_for('static', filename='images/pakistan_army_logo.png') }}" alt="Pakistan Army Logo">
+            </div>
+            <div class="logo-label">Pakistan Army</div>
+        </div>
+        <div class="logo-wrapper">
+            <div class="logo-circle">
+                <img src="{{ url_for('static', filename='images/eme_logo.png') }}" alt="EME Logo">
+            </div>
+            <div class="logo-label">College of EME</div>
+        </div>
+        <div class="logo-wrapper">
+            <div class="logo-circle">
+                <img src="{{ url_for('static', filename='images/horse_regiment_logo.png') }}" alt="Horse Regiment Logo">
+            </div>
+            <div class="logo-label">Horse Regiment</div>
+        </div>
+    </div>
+
+    <div class="login-container">
+        <div class="login-header">
+            <h2>LOGIN PORTAL</h2>
+            <p>Enter your credentials to access the system</p>
+        </div>
+
+        <form id="loginForm" action="{{ url_for('login') }}" method="POST">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+                <div class="error-message" id="usernameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                <div class="error-message" id="passwordError"></div>
+            </div>
+
+            <button type="submit" class="login-button">Login</button>
+        </form>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Pakistan Army. All rights reserved.</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const loginForm = document.getElementById('loginForm');
+            const submitButton = document.querySelector('.login-button');
+
+            // Reset button state on page load (handles back button issue)
+            submitButton.textContent = 'Login';
+            submitButton.disabled = false;
+
+            // Clear form fields on page load to prevent cached values
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+
+            // Handle browser back/forward navigation
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted || performance.navigation.type === 2) {
+                    // Page was restored from cache (back button pressed)
+                    submitButton.textContent = 'Login';
+                    submitButton.disabled = false;
+                    document.getElementById('username').value = '';
+                    document.getElementById('password').value = '';
+                }
+            });
+
+            // Prevent page caching to ensure fresh state
+            window.addEventListener('beforeunload', function() {
+                // This helps prevent page caching
+            });
+
+            loginForm.addEventListener('submit', function(e) {
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+
+                let isValid = true;
+
+                // Reset error messages
+                document.getElementById('usernameError').style.display = 'none';
+                document.getElementById('passwordError').style.display = 'none';
+
+                // Username validation
+                if (!username.trim()) {
+                    e.preventDefault();
+                    document.getElementById('usernameError').textContent = 'Username is required';
+                    document.getElementById('usernameError').style.display = 'block';
+                    isValid = false;
+                }
+
+                // Password validation
+                if (!password.trim()) {
+                    e.preventDefault();
+                    document.getElementById('passwordError').textContent = 'Password is required';
+                    document.getElementById('passwordError').style.display = 'block';
+                    isValid = false;
+                } else if (password.length < 6) {
+                    e.preventDefault();
+                    document.getElementById('passwordError').textContent = 'Password must be at least 6 characters';
+                    document.getElementById('passwordError').style.display = 'block';
+                    isValid = false;
+                }
+
+                if (isValid) {
+                    // Show loading state
+                    submitButton.textContent = 'Logging in...';
+                    submitButton.disabled = true;
+                }
+            });
+
+            // Handle flash messages auto-hide after 5 seconds
+            const flashMessages = document.querySelectorAll('.flash-message');
+            flashMessages.forEach(message => {
+                setTimeout(() => {
+                    message.style.opacity = '0';
+                    setTimeout(() => {
+                        message.style.display = 'none';
+                    }, 300);
+                }, 5000);
+            });
+        });
+    </script>
+</body>
+</html>

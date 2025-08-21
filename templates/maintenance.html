@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management - Maintenance</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="40" r="1" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            opacity: 0.4;
+            z-index: 1;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+            border-bottom: 3px solid #d4af37;
+        }
+
+        .navbar h1 {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            color: #fff;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .navbar-links a:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 30px auto;
+            padding: 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #d4af37;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header h2 {
+            color: #fff;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .actions-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary { background: linear-gradient(145deg, #6c757d, #545b62); color: white; }
+        .btn-secondary:hover { background: linear-gradient(145deg, #545b62, #6c757d); }
+        .btn-danger { background: linear-gradient(145deg, #dc3545, #c82333); color: white; }
+        .btn-danger:hover { background: linear-gradient(145deg, #c82333, #dc3545); }
+        .btn-success { background: linear-gradient(145deg, #28a745, #218838); color: white; }
+        .btn-success:hover { background: linear-gradient(145deg, #218838, #28a745); }
+        .btn-info { background: linear-gradient(145deg, #17a2b8, #138496); color: white; }
+        .btn-info:hover { background: linear-gradient(145deg, #138496, #17a2b8); }
+        .btn-warning { background: linear-gradient(145deg, #ffc107, #e0a800); color: #212529; }
+        .btn-warning:hover { background: linear-gradient(145deg, #e0a800, #ffc107); }
+        .btn-sm { padding: 8px 16px; font-size: 12px; }
+
+        .filter-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .filter-section h3 {
+            color: #1a472a;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a472a;
+        }
+
+        .form-group select,
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #b8941f;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            padding: 25px;
+            overflow-x: auto;
+        }
+
+        .maintenance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .maintenance-table th,
+        .maintenance-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .maintenance-table th {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 0;
+        }
+
+        .maintenance-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .maintenance-table tr:hover {
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-pending { background: #ffc107; color: #212529; }
+        .status-in-progress { background: #17a2b8; color: white; }
+        .status-completed { background: #28a745; color: white; }
+        .status-overdue { background: #dc3545; color: white; }
+        .status-active { background: #28a745; color: white; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            margin: 3% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 800px;
+            max-width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            border: 3px solid #d4af37;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #1a472a;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            color: #1a472a;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #d4af37;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .error-message, .success-message {
+            display: none;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .error-message {
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            border-left: 4px solid #dc3545;
+        }
+
+        .success-message {
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid #28a745;
+        }
+
+        .error-message:not(:empty), .success-message:not(:empty) {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #1a472a;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+        }
+
+        .pagination button {
+            background: rgba(212, 175, 55, 0.2);
+            border: 2px solid #d4af37;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .pagination button:hover {
+            background: rgba(212, 175, 55, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .pagination button.active {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            font-weight: bold;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .logout-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .logout-modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 2px solid #d4af37;
+            text-align: center;
+        }
+
+        .logout-modal h3 {
+            color: #1a472a;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .modal-btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #545b62;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+        }
+
+        .modal-btn-confirm:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 15px; }
+            .actions-container { flex-direction: column; }
+            .btn { width: 100%; text-align: center; }
+            .modal-content { width: 95%; margin: 5% auto; padding: 20px; }
+            .filter-form { flex-direction: column; }
+            .form-group { min-width: 100%; }
+            .navbar { padding: 15px 20px; flex-direction: column; gap: 15px; }
+            .navbar h1 { font-size: 24px; }
+            .page-header { flex-direction: column; gap: 15px; text-align: center; }
+            .modal-buttons { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Fleet Management Dashboard</h1>
+        <div class="navbar-links">
+            <a href="dashboard" onclick="navigateToDashboard(event)">Dashboard</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="page-header">
+            <h2>Maintenance Management</h2>
+        </div>
+
+        <div class="actions-container">
+            <button class="btn" onclick="openAddTaskModal()">Add Task</button>
+            <button class="btn btn-info" onclick="generateReport()">Generate Report</button>
+        </div>
+
+        <div class="filter-section">
+            <h3>Filter & Search Tasks</h3>
+            <div class="filter-form">
+                <div class="form-group">
+                    <label for="searchTaskId">Search by Task ID</label>
+                    <input type="text" id="searchTaskId" placeholder="Enter task ID...">
+                </div>
+                <div class="form-group">
+                    <label for="searchVehicleId">Search by Vehicle ID</label>
+                    <input type="text" id="searchVehicleId" placeholder="Enter vehicle ID...">
+                </div>
+                <button class="btn" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+        <div id="successMessage" class="success-message"></div>
+
+        <div class="table-container">
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                Loading tasks...
+            </div>
+            <table class="maintenance-table" id="tasksTable">
+                <thead>
+                    <tr>
+                        <th>Task ID</th>
+                        <th>Vehicle ID</th>
+                        <th>Type</th>
+                        <th>Last Done</th>
+                        <th>Last Done Mileage</th>
+                        <th>Next Due</th>
+                        <th>Periodicity</th>
+                        <th>Time Interval (Months)</th>
+                        <th>Distance Interval (Km)</th>
+                        <th>Changed Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="taskTableBody">
+                    <!-- Tasks will be dynamically inserted here -->
+                </tbody>
+            </table>
+
+            <div class="pagination" id="pagination">
+                <!-- Pagination will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Maintenance Task</h2>
+                <span class="close-btn" onclick="closeModal('addTaskModal')">&times;</span>
+            </div>
+            <form id="addTaskForm">
+                <div class="form-group">
+                    <label for="vehicleId">Vehicle ID *</label>
+                    <select id="vehicleId" name="vehicle_id" required>
+                        <option value="">Select Vehicle...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="type">Maintenance Type *</label>
+                    <input type="text" id="type" name="type" required placeholder="e.g., Oil Change, Brake Inspection">
+                </div>
+                <div class="form-group">
+                    <label for="lastDone">Last Done</label>
+                    <input type="date" id="lastDone" name="last_done">
+                </div>
+                <div class="form-group">
+                    <label for="lastDoneMileage">Last Done Mileage</label>
+                    <input type="number" id="lastDoneMileage" name="last_done_mileage" placeholder="e.g., 10000">
+                </div>
+                <div class="form-group">
+                    <label for="nextDue">Next Due</label>
+                    <input type="date" id="nextDue" name="next_due">
+                </div>
+                <div class="form-group">
+                    <label for="periodicity">Periodicity</label>
+                    <input type="text" id="periodicity" name="periodicity" placeholder="e.g., Monthly, Quarterly">
+                </div>
+                <div class="form-group">
+                    <label for="timeInterval">Time Interval (Months)</label>
+                    <input type="number" id="timeInterval" name="time_interval" placeholder="e.g., 3, 6, 12">
+                </div>
+                <div class="form-group">
+                    <label for="distanceTraveled">Distance Interval (Km)</label>
+                    <input type="number" id="distanceTraveled" name="distance_traveled" placeholder="e.g., 5000, 10000">
+                </div>
+                <div class="form-group">
+                    <label for="changedDate">Changed Date</label>
+                    <input type="date" id="changedDate" name="changed_date">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addTaskModal')">Cancel</button>
+                    <button type="submit" class="btn">Add Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="editTaskModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Edit Maintenance Task</h2>
+                <span class="close-btn" onclick="closeModal('editTaskModal')">&times;</span>
+            </div>
+            <form id="editTaskForm">
+                <input type="hidden" id="editTaskId" name="task_id">
+                <div class="form-group">
+                    <label for="editVehicleId">Vehicle ID *</label>
+                    <select id="editVehicleId" name="vehicle_id" required>
+                        <option value="">Select Vehicle...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editType">Maintenance Type *</label>
+                    <input type="text" id="editType" name="type" required placeholder="e.g., Oil Change, Brake Inspection">
+                </div>
+                <div class="form-group">
+                    <label for="editLastDone">Last Done</label>
+                    <input type="date" id="editLastDone" name="last_done">
+                </div>
+                <div class="form-group">
+                    <label for="editLastDoneMileage">Last Done Mileage</label>
+                    <input type="number" id="editLastDoneMileage" name="last_done_mileage" placeholder="e.g., 10000">
+                </div>
+                <div class="form-group">
+                    <label for="editNextDue">Next Due</label>
+                    <input type="date" id="editNextDue" name="next_due">
+                </div>
+                <div class="form-group">
+                    <label for="editPeriodicity">Periodicity</label>
+                    <input type="text" id="editPeriodicity" name="periodicity" placeholder="e.g., Monthly, Quarterly">
+                </div>
+                <div class="form-group">
+                    <label for="editTimeInterval">Time Interval (Months)</label>
+                    <input type="number" id="editTimeInterval" name="time_interval" placeholder="e.g., 3, 6, 12">
+                </div>
+                <div class="form-group">
+                    <label for="editDistanceTraveled">Distance Interval (Km)</label>
+                    <input type="number" id="editDistanceTraveled" name="distance_traveled" placeholder="e.g., 5000, 10000">
+                </div>
+                <div class="form-group">
+                    <label for="editChangedDate">Changed Date</label>
+                    <input type="date" id="editChangedDate" name="changed_date">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('editTaskModal')">Cancel</button>
+                    <button type="submit" class="btn">Update Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="logout-modal">
+        <div class="logout-modal-content">
+            <h3>Logout Confirmation</h3>
+            <p>Are you sure you want to logout?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Maintenance Report</h2>
+                <span class="close-btn" onclick="closeModal('reportModal')">&times;</span>
+            </div>
+            <div id="reportContent">
+                <!-- Report content will be dynamically generated -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPage = 1;
+        let totalPages = 1;
+        let allTasks = [];
+        let filteredTasks = [];
+
+        // Initialize page on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVehicles();
+            loadTasks();
+        });
+
+        // Load vehicles for dropdown
+        async function loadVehicles() {
+            try {
+                const response = await fetch('/api/vehicles/list', {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const vehicleSelects = document.querySelectorAll('#vehicleId, #editVehicleId');
+
+                    vehicleSelects.forEach(select => {
+                        select.innerHTML = '<option value="">Select Vehicle...</option>';
+                        data.vehicles.forEach(vehicle => {
+                            const option = document.createElement('option');
+                            option.value = vehicle.id;
+                            option.textContent = vehicle.display_name;
+                            select.appendChild(option);
+                        });
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load vehicles:', error);
+            }
+        }
+
+        // Navigation functions
+        function navigateToDashboard(event) {
+            event.preventDefault();
+            window.location.href = '/dashboard';
+        }
+
+        // Logout functions
+        function logout() {
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            window.location.href = '/logout';
+        }
+
+        // Load tasks from backend
+        async function loadTasks(page = 1) {
+            showLoading(true);
+            try {
+                const taskId = document.getElementById('searchTaskId').value;
+                const vehicleId = document.getElementById('searchVehicleId').value;
+
+                const params = new URLSearchParams({
+                    page: page,
+                    per_page: 10
+                });
+
+                if (taskId) params.append('task_id', taskId);
+                if (vehicleId) params.append('vehicle_id', vehicleId);
+
+                const response = await fetch(/api/tasks?${params}, {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    allTasks = data.tasks;
+                    displayTasks(data.tasks);
+                    updatePagination(data.pagination);
+                    clearMessages();
+                } else {
+                    showError('Failed to load tasks: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                showError('Failed to connect to server. Make sure your Flask app is running.');
+                console.error('Error loading tasks:', error);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Display tasks in table
+        function displayTasks(tasks) {
+            const tbody = document.getElementById('taskTableBody');
+            tbody.innerHTML = '';
+
+            if (tasks.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #666;">No tasks found</td></tr>';
+                return;
+            }
+
+            tasks.forEach(task => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${task.task_id}</td>
+                    <td>${task.vehicle_id}</td>
+                    <td>${task.type}</td>
+                    <td>${task.last_done ? formatDate(task.last_done) : 'N/A'}</td>
+                    <td>${task.last_done_mileage || 'N/A'}</td>
+                    <td>${task.next_due ? formatDate(task.next_due) : 'N/A'}</td>
+                    <td>${task.periodicity || 'N/A'}</td>
+                    <td>${task.time_interval || 'N/A'}</td>
+                    <td>${task.distance_traveled || 'N/A'}</td>
+                    <td>${task.changed_date ? formatDate(task.changed_date) : 'N/A'}</td>
+                    <td><span class="status-badge status-${task.status.toLowerCase().replace(' ', '-')}">${task.status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="editTask('${task.task_id}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTask('${task.task_id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Format date helper
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US');
+        }
+
+        // Modal functions
+        function openAddTaskModal() {
+            document.getElementById('addTaskModal').style.display = 'block';
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Add task form submission
+        document.getElementById('addTaskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const taskData = {};
+
+            // Convert FormData to regular object
+            for (let [key, value] of formData.entries()) {
+                taskData[key] = value;
+            }
+
+            try {
+                const response = await fetch('/api/tasks', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Task added successfully!');
+                    closeModal('addTaskModal');
+                    this.reset();
+                    loadTasks(currentPage);
+                } else {
+                    showError('Failed to add task: ' + (result.error || result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                showError('Failed to connect to server: ' + error.message);
+                console.error('Error adding task:', error);
+            }
+        });
+
+        // Edit task form submission
+        document.getElementById('editTaskForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const taskData = {};
+            const taskId = formData.get('task_id');
+
+            // Convert FormData to regular object
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'task_id') {
+                    taskData[key] = value;
+                }
+            }
+
+            try {
+                const response = await fetch(/api/tasks/${taskId}, {
+                    method: 'PUT',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(taskData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Task updated successfully!');
+                    closeModal('editTaskModal');
+                    loadTasks(currentPage);
+                } else {
+                    showError('Failed to update task: ' + (result.error || result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                showError('Failed to connect to server: ' + error.message);
+                console.error('Error updating task:', error);
+            }
+        });
+
+        // Edit task function
+        async function editTask(taskId) {
+            try {
+                const response = await fetch(/api/tasks/${taskId}, {
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const task = result.task;
+
+                    // Populate edit form
+                    document.getElementById('editTaskId').value = task.task_id;
+                    document.getElementById('editVehicleId').value = task.vehicle_id;
+                    document.getElementById('editType').value = task.type;
+                    document.getElementById('editLastDone').value = task.last_done || '';
+                    document.getElementById('editLastDoneMileage').value = task.last_done_mileage || '';
+                    document.getElementById('editNextDue').value = task.next_due || '';
+                    document.getElementById('editPeriodicity').value = task.periodicity || '';
+                    document.getElementById('editTimeInterval').value = task.time_interval || '';
+                    document.getElementById('editDistanceTraveled').value = task.distance_traveled || '';
+                    document.getElementById('editChangedDate').value = task.changed_date || '';
+
+                    document.getElementById('editTaskModal').style.display = 'block';
+                } else {
+                    showError('Failed to load task details');
+                }
+            } catch (error) {
+                showError('Failed to load task: ' + error.message);
+            }
+        }
+
+        // Delete task function
+        async function deleteTask(taskId) {
+            if (!confirm(Are you sure you want to delete task ${taskId}?)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(/api/tasks/${taskId}, {
+                    method: 'DELETE',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showSuccess('Task deleted successfully!');
+                    loadTasks(currentPage);
+                } else {
+                    showError('Failed to delete task: ' + (result.error || result.message || 'Unknown error'));
+                }
+            } catch (error) {
+                showError('Failed to delete task: ' + error.message);
+                console.error('Error deleting task:', error);
+            }
+        }
+
+        // Generate report function
+        async function generateReport() {
+            try {
+                const response = await fetch('/api/maintenance/report', {
+                    credentials: 'same-origin'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    const report = result.report;
+                    const reportContent = `
+                        <h3>Maintenance Summary Report</h3>
+                        <div style="margin: 20px 0;">
+                            <h4>Summary Statistics:</h4>
+                            <p><strong>Total Tasks:</strong> ${report.summary.total_tasks}</p>
+                            <p><strong>Overdue Tasks:</strong> ${report.summary.overdue_tasks}</p>
+                            <p><strong>Pending Tasks:</strong> ${report.summary.pending_tasks}</p>
+                            <p><strong>Vehicles with Maintenance:</strong> ${report.summary.vehicles_count}</p>
+                        </div>
+                        <div style="margin: 20px 0;">
+                            <h4>Task Type Breakdown:</h4>
+                            ${Object.entries(report.type_breakdown).map(([type, count]) =>
+                                <p><strong>${type}:</strong> ${count}</p>
+                            ).join('')}
+                        </div>
+                        <div style="margin: 20px 0;">
+                            <h4>Recent Tasks:</h4>
+                            ${report.recent_tasks.length > 0 ?
+                                report.recent_tasks.map(task =>
+                                    <p>• Task ${task.task_id}: ${task.type} for Vehicle ${task.vehicle_id} - Next Due: ${task.next_due || 'Not set'}</p>
+                                ).join('') :
+                                '<p>No recent tasks found.</p>'
+                            }
+                        </div>
+                    `;
+
+                    document.getElementById('reportContent').innerHTML = reportContent;
+                    document.getElementById('reportModal').style.display = 'block';
+                } else {
+                    showError('Failed to generate report: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                showError('Failed to generate report: ' + error.message);
+                console.error('Error generating report:', error);
+            }
+        }
+
+        // Filter functions
+        function applyFilters() {
+            currentPage = 1;
+            loadTasks(1);
+        }
+
+        function resetFilters() {
+            document.getElementById('searchTaskId').value = '';
+            document.getElementById('searchVehicleId').value = '';
+            currentPage = 1;
+            loadTasks(1);
+        }
+
+        // Pagination functions
+        function changePage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                loadTasks(page);
+            }
+        }
+
+        function updatePagination(pagination) {
+            totalPages = pagination.total_pages || 1;
+            currentPage = pagination.current_page || 1;
+
+            const paginationDiv = document.getElementById('pagination');
+            paginationDiv.innerHTML = '';
+
+            // Previous button
+            if (currentPage > 1) {
+                const prevBtn = document.createElement('button');
+                prevBtn.textContent = '‹ Previous';
+                prevBtn.onclick = () => changePage(currentPage - 1);
+                paginationDiv.appendChild(prevBtn);
+            }
+
+            // Page numbers
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, currentPage + 2);
+
+            for (let i = startPage; i <= endPage; i++) {
+                const button = document.createElement('button');
+                button.textContent = i;
+                button.onclick = () => changePage(i);
+                if (i === currentPage) button.classList.add('active');
+                paginationDiv.appendChild(button);
+            }
+
+            // Next button
+            if (currentPage < totalPages) {
+                const nextBtn = document.createElement('button');
+                nextBtn.textContent = 'Next ›';
+                nextBtn.onclick = () => changePage(currentPage + 1);
+                paginationDiv.appendChild(nextBtn);
+            }
+
+            // Page info
+            const pageInfo = document.createElement('div');
+            pageInfo.style.marginTop = '10px';
+            pageInfo.style.textAlign = 'center';
+            pageInfo.style.color = '#666';
+            pageInfo.textContent = Page ${currentPage} of ${totalPages} (${pagination.total_count || 0} total tasks);
+            paginationDiv.appendChild(pageInfo);
+        }
+
+        // Utility functions
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
+
+            successDiv.style.display = 'none';
+            successDiv.textContent = '';
+
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+                errorDiv.textContent = '';
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('successMessage');
+            const errorDiv = document.getElementById('errorMessage');
+
+            errorDiv.style.display = 'none';
+            errorDiv.textContent = '';
+
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+
+            setTimeout(() => {
+                successDiv.style.display = 'none';
+                successDiv.textContent = '';
+            }, 5000);
+        }
+
+        function clearMessages() {
+            document.getElementById('errorMessage').style.display = 'none';
+            document.getElementById('successMessage').style.display = 'none';
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modals = document.querySelectorAll('.modal, .logout-modal');
+            modals.forEach(modal => {
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

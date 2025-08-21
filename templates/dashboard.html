@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fleet Management Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="40" r="1" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            opacity: 0.4;
+            z-index: 1;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+            border-bottom: 3px solid #d4af37;
+        }
+
+        .navbar h1 {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            color: #fff;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .navbar-links a:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .welcome-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            text-align: center;
+        }
+
+        .welcome-section h2 {
+            color: #1a472a;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .welcome-section p {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #d4af37, #b8941f);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            border-color: #b8941f;
+        }
+
+        .card h3 {
+            color: #1a472a;
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .card p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .card-button {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .card-button:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .card-button:active {
+            transform: translateY(0);
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .footer {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            font-size: 12px;
+            padding: 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        /* Modal Styles (shared for both logout and tracking) */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 2px solid #d4af37;
+            text-align: center;
+        }
+
+        .modal h3 {
+            color: #1a472a;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .modal-btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .modal-btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+
+        .modal-btn-cancel:hover {
+            background: #545b62;
+        }
+
+        .modal-btn-confirm {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+        }
+
+        .modal-btn-confirm:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+        }
+
+        .modal-btn-primary {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+        }
+
+        .modal-btn-primary:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .modal-btn-secondary {
+            background: linear-gradient(145deg, #2d5a3d, #1a472a);
+            color: #d4af37;
+        }
+
+        .modal-btn-secondary:hover {
+            background: linear-gradient(145deg, #1a472a, #2d5a3d);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        /* Tracking Modal Specific Styles */
+        .tracking-modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .tracking-modal p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .cards-container {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 25px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .navbar h1 {
+                font-size: 24px;
+            }
+
+            .cards-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .container {
+                padding: 20px 15px;
+            }
+
+            .welcome-section {
+                padding: 20px;
+            }
+
+            .welcome-section h2 {
+                font-size: 24px;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .modal-content {
+                width: 350px;
+                padding: 25px;
+            }
+
+            .modal-buttons {
+                flex-direction: column;
+            }
+
+            .tracking-modal-buttons {
+                gap: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar h1 {
+                font-size: 20px;
+            }
+
+            .welcome-section h2 {
+                font-size: 20px;
+            }
+
+            .card h3 {
+                font-size: 18px;
+            }
+
+            .modal-content {
+                width: 300px;
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Fleet Management Dashboard</h1>
+        <div class="navbar-links">
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="welcome-section">
+            <h2 id="welcomeMessage">Welcome, Administrator!</h2>
+            <p id="loginInfo">You are logged in as: admin</p>
+        </div>
+
+        <div class="cards-container">
+            <div class="card">
+                <h3>Manage Drivers</h3>
+                <p>Add, edit, or remove drivers. Manage driver profiles, licenses, and assignments to vehicles.</p>
+                <a href="drivers.html" class="card-button">Manage Drivers</a>
+            </div>
+
+            <div class="card">
+                <h3>Manage Vehicles</h3>
+                <p>View and manage vehicle fleet. Track vehicle status, registration, and maintenance schedules.</p>
+                <a href="vehicles.html" class="card-button">Manage Vehicles</a>
+            </div>
+
+            <div class="card">
+                <h3>Maintenance Management</h3>
+                <p>Schedule and track vehicle maintenance. Monitor service history and upcoming maintenance tasks.</p>
+                <a href="maintenance.html" class="card-button">Maintenance</a>
+            </div>
+
+            <div class="card">
+                <h3>Tracking</h3>
+                <p>Real-time vehicle tracking and route monitoring. View current locations and trip history.</p>
+                <button onclick="showTrackingModal()" class="card-button">Vehicle Tracking</button>
+            </div>
+
+            <div class="card">
+                <h3>Manage Admins</h3>
+                <p>Create and manage administrator accounts with appropriate access levels and permissions.</p>
+                <a href="admins.html" class="card-button">Manage Admins</a>
+            </div>
+
+            <div class="card">
+                <div class="notification-badge" id="notificationBadge">5</div>
+                <h3>Notifications</h3>
+                <p>View system notifications, alerts, maintenance reminders, and important fleet updates.</p>
+                <a href="notifications.html" class="card-button">View Notifications</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2024 Pakistan Army Fleet Management System. All rights reserved.</p>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content">
+            <h3>Logout Confirmation</h3>
+            <p>Are you sure you want to logout?</p>
+            <div class="modal-buttons">
+                <button class="modal-btn modal-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+                <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracking Options Modal -->
+    <div id="trackingModal" class="modal">
+        <div class="modal-content">
+            <h3>Select Tracking Option</h3>
+            <p>Choose the type of tracking you want to access:</p>
+            <div class="tracking-modal-buttons">
+                <button class="modal-btn modal-btn-primary" onclick="openLiveTracking()">Live Tracking</button>
+                <button class="modal-btn modal-btn-secondary" onclick="openRouteTracking()">Route Tracking</button>
+                <button class="modal-btn modal-btn-cancel" onclick="closeTrackingModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize dashboard on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            checkNotifications();
+        });
+
+        // Initialize dashboard with user data (this would normally come from session/backend)
+        function initializeDashboard() {
+            // This would normally be populated from session data
+            const userData = {
+                fullName: 'Administrator',
+                username: 'admin'
+            };
+
+            // Update welcome message
+            document.getElementById('welcomeMessage').textContent = `Welcome, ${userData.fullName}!`;
+            document.getElementById('loginInfo').textContent = `You are logged in as: ${userData.username}`;
+        }
+
+        // Check for notifications and update badge
+        function checkNotifications() {
+            fetch('/get_notification_count')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const badge = document.getElementById('notificationBadge');
+                    if (data.error) {
+                        console.error('Error fetching notifications:', data.error);
+                        badge.style.display = 'none';
+                        return;
+                    }
+
+                    const unreadCount = data.count || 0;
+                    if (unreadCount > 0) {
+                        badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                        badge.style.display = 'flex';
+
+                        // Add animation for new notifications
+                        if (unreadCount > parseInt(badge.textContent || '0')) {
+                            badge.classList.add('pulse');
+                            setTimeout(() => badge.classList.remove('pulse'), 2000);
+                        }
+                    } else {
+                        badge.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching notification count:', error);
+                    document.getElementById('notificationBadge').style.display = 'none';
+                });
+        }
+
+        // Add this CSS for the pulse animation (if not already present)
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.2); }
+                100% { transform: scale(1); }
+            }
+            .pulse {
+                animation: pulse 0.5s ease-in-out 2;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Update your DOMContentLoaded event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            checkNotifications();
+
+            // Check for new notifications every 30 seconds
+            setInterval(checkNotifications, 30000);
+        });
+
+        // Simulate getting unread notification count (replace with actual API call)
+        function getUnreadNotificationCount() {
+            // This function is no longer used
+            return 0;
+        }
+
+        // Logout Modal Functions
+        function logout() {
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            sessionStorage.clear();
+            localStorage.clear();
+            window.location.href = '/logout';
+        }
+
+        // Tracking Modal Functions
+        function showTrackingModal() {
+            document.getElementById('trackingModal').style.display = 'block';
+        }
+
+        function closeTrackingModal() {
+            document.getElementById('trackingModal').style.display = 'none';
+        }
+
+        function openLiveTracking() {
+            closeTrackingModal();
+            window.location.href = 'live_tracking.html';
+        }
+
+        function openRouteTracking() {
+            closeTrackingModal();
+            window.location.href = 'route_tracking.html';
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const logoutModal = document.getElementById('logoutModal');
+            const trackingModal = document.getElementById('trackingModal');
+
+            if (event.target == logoutModal) {
+                closeLogoutModal();
+            }
+            if (event.target == trackingModal) {
+                closeTrackingModal();
+            }
+        }
+
+        // Card click handlers (alternative to href links)
+        function navigateToPage(page) {
+            window.location.href = page;
+        }
+
+        // Handle browser back button to prevent cache issues
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted || performance.navigation.type === 2) {
+                // Page was restored from cache (back button pressed)
+                window.location.reload();
+            }
+        });
+
+        // Auto-refresh notification count every 30 seconds
+        setInterval(checkNotifications, 30000);
+
+        // Handle window resize for responsive behavior
+        window.addEventListener('resize', function() {
+            // Any responsive adjustments can be made here
+        });
+
+        // Add click effects to cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-8px) scale(1.02)';
+            });
+
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0) scale(1)';
+            });
+        });
+
+        // Prevent page caching
+        window.addEventListener('beforeunload', function() {
+            // This helps prevent page caching
+        });
+    </script>
+</body>
+</html>

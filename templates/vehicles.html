@@ -1,0 +1,2309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vehicle Management</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="75" cy="75" r="1" fill="rgba(255,255,255,0.03)"/><circle cx="50" cy="10" r="1" fill="rgba(255,255,255,0.02)"/><circle cx="90" cy="40" r="1" fill="rgba(255,255,255,0.02)"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grain)"/></svg>');
+            opacity: 0.4;
+            z-index: 1;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #1a472a 0%, #2d5a3d 50%, #1a472a 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 10;
+            border-bottom: 3px solid #d4af37;
+        }
+
+        .navbar h1 {
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            color: #fff;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .navbar-links a:hover {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: #d4af37;
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #d4af37;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-header h2 {
+            color: #fff;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .actions-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-block;
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #6c757d, #545b62);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, #545b62, #6c757d);
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(145deg, #c82333, #dc3545);
+        }
+
+        .btn-success {
+            background: linear-gradient(145deg, #28a745, #218838);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(145deg, #218838, #28a745);
+        }
+
+        .btn-info {
+            background: linear-gradient(145deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: linear-gradient(145deg, #138496, #17a2b8);
+        }
+
+        .btn-sm {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .filter-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .filter-section h3 {
+            color: #1a472a;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .filter-form {
+            display: flex;
+            gap: 20px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a472a;
+        }
+
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group select:focus,
+        .form-group input:focus {
+            outline: none;
+            border-color: #b8941f;
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 2px solid #d4af37;
+            padding: 25px;
+            overflow-x: auto;
+        }
+
+        .vehicles-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .vehicles-table th,
+        .vehicles-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .vehicles-table th {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: sticky;
+            top: 0;
+        }
+
+        .vehicles-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .vehicles-table tr:hover {
+            background-color: rgba(212, 175, 55, 0.1);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+        }
+
+        .modal-content {
+            background: rgba(255, 255, 255, 0.98);
+            margin: 3% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 700px;
+            max-width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            border: 3px solid #d4af37;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+            color: #1a472a;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            color: #1a472a;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-btn:hover {
+            color: #d4af37;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .error-message, .success-message {
+            display: none;
+            color: #dc3545;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px;
+            background: rgba(220, 53, 69, 0.1);
+            border-left: 4px solid #dc3545;
+            border-radius: 4px;
+        }
+
+        .success-message {
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid #28a745;
+        }
+
+        .error-message:not(:empty), .success-message:not(:empty) {
+            display: block;
+        }
+
+        .choice-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        .choice-buttons button {
+            flex: 1;
+            max-width: 200px;
+            padding: 12px 20px;
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .warning-message {
+            background: rgba(255, 243, 205, 0.9);
+            color: #856404;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+        }
+
+        .pagination button {
+            background: rgba(212, 175, 55, 0.2);
+            border: 2px solid #d4af37;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .pagination button:hover {
+            background: rgba(212, 175, 55, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .pagination button.active {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+            font-weight: bold;
+        }
+
+        .maintenance-section {
+            border: 2px solid #d4af37;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            background: rgba(212, 175, 55, 0.05);
+        }
+
+        .maintenance-section h3 {
+            color: #1a472a;
+            margin-bottom: 15px;
+        }
+
+        .maintenance-item {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .maintenance-item h4 {
+            color: #1a472a;
+            margin-bottom: 10px;
+        }
+
+        .maintenance-type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .maintenance-type-card {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background: white;
+        }
+
+        .maintenance-type-card.selected {
+            border-color: #d4af37;
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .maintenance-checkbox {
+            margin-right: 10px;
+        }
+
+        .maintenance-details {
+            margin-top: 15px;
+            display: none;
+        }
+
+        .maintenance-details.show {
+            display: block;
+        }
+
+        .periodicity-options {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .periodicity-options label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .report-info-section {
+            background: rgba(212, 175, 55, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #d4af37;
+        }
+
+        .maintenance-report {
+            margin-top: 20px;
+        }
+
+        .maintenance-item-report {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #f0f0f0;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 10px 0;
+            border: 2px solid #ddd;
+        }
+
+        .progress-fill {
+            height: 100%;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .progress-green {
+            background: linear-gradient(45deg, #28a745, #20c997);
+        }
+
+        .progress-yellow {
+            background: linear-gradient(45deg, #ffc107, #fd7e14);
+        }
+
+        .progress-red {
+            background: linear-gradient(45deg, #dc3545, #e74c3c);
+        }
+
+        .logout-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .logout-modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 400px;
+            max-width: 90%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 2px solid #d4af37;
+            text-align: center;
+        }
+        .logout-modal h3 {
+            color: #1a472a;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .logout-modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+        .logout-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .logout-btn-cancel {
+            background: #6c757d;
+            color: white;
+        }
+        .logout-btn-cancel:hover {
+            background: #545b62;
+        }
+        .logout-btn-confirm {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
+        }
+        .logout-btn-confirm:hover {
+            background: linear-gradient(145deg, #b8941f, #d4af37);
+        }
+
+        .form-section .btn {
+            margin-top: 15px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .actions-container {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                padding: 20px;
+            }
+
+            .choice-buttons {
+                flex-direction: column;
+            }
+
+            .choice-buttons button {
+                max-width: 100%;
+            }
+
+            .filter-form {
+                flex-direction: column;
+            }
+
+            .form-group {
+                min-width: 100%;
+            }
+
+            .navbar {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .navbar h1 {
+                font-size: 24px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .maintenance-type-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar h1 {
+                font-size: 20px;
+            }
+
+            .page-header h2 {
+                font-size: 24px;
+            }
+
+            .modal-content {
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <h1>Vehicle Management</h1>
+        <div class="navbar-links">
+            <a href="/dashboard">Dashboard</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container">
+        <div class="page-header">
+            <h2>Vehicle Management</h2>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="actions-container">
+            <button class="btn" onclick="openAddModal()">Add Vehicle</button>
+            <button class="btn btn-secondary" onclick="openUpdateModal()">Update Vehicle</button>
+            <button class="btn btn-danger" onclick="openRemoveModal()">Remove Vehicle</button>
+            <button class="btn btn-info" onclick="openMaintenanceReportModal()">Maintenance Report</button>
+            <button class="btn" style="background: linear-gradient(145deg, #e67e22, #d35400); color: white;" onclick="openSetSpeedLimitModal()">Set Speed Limit</button>
+        </div>
+
+        <!-- Filter and Search Section -->
+        <div class="filter-section">
+            <h3>Filter & Search Vehicles</h3>
+            <div class="filter-form">
+                <div class="form-group">
+                    <label for="searchBANumber">Search by BA Number</label>
+                    <input type="text" id="searchBANumber" placeholder="Enter BA number...">
+                </div>
+                <div class="form-group">
+                    <label for="filterMake">Filter by Make</label>
+                    <select id="filterMake">
+                        <option value="">All Makes</option>
+                        <!-- Will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterType">Filter by Type</label>
+                    <select id="filterType">
+                        <option value="">All Types</option>
+                        <!-- Will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filterUnit">Filter by Unit</label>
+                    <select id="filterUnit">
+                        <option value="">All Units</option>
+                        <!-- Will be populated by JavaScript -->
+                    </select>
+                </div>
+                <button class="btn" onclick="applyFilters()">Apply Filters</button>
+                <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-container">
+            <table class="vehicles-table">
+                <thead>
+                    <tr>
+                        <th>Vehicle ID</th>
+                        <th>BA Number</th>
+                        <th>Make</th>
+                        <th>Type</th>
+                        <th>Model</th>
+                        <th>Total Mileage</th>
+                        <th>Unit</th>
+                        <th>Workshop</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="vehiclesTableBody">
+                    <!-- Will be populated by JavaScript -->
+                </tbody>
+            </table>
+            <div id="noRecordsMessage" style="display: none; text-align: center; padding: 20px; color: #1a472a; font-weight: 500;">
+                No vehicle records found.
+            </div>
+            <div class="pagination" id="pagination">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Vehicle Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Add New Vehicle</h2>
+                <span class="close-btn" onclick="closeModal('addModal')">&times;</span>
+            </div>
+            <div id="addVehicleError" class="error-message"></div>
+            <div id="addVehicleSuccess" class="success-message"></div>
+
+            <!-- Vehicle Details Form -->
+            <form id="addVehicleForm">
+                <div class="form-group">
+                    <label for="addVehicleId">Vehicle ID*</label>
+                    <input type="text" id="addVehicleId" required placeholder="Enter vehicle ID">
+                </div>
+                <div class="form-group">
+                    <label for="addBANumber">BA Number*</label>
+                    <input type="text" id="addBANumber" required placeholder="Enter BA number">
+                </div>
+                <div class="form-group">
+                    <label for="addMake">Make*</label>
+                    <input type="text" id="addMake" required placeholder="Enter make (e.g., Toyota, Honda)">
+                </div>
+                <div class="form-group">
+                    <label for="addType">Type*</label>
+                    <select id="addType" required>
+                        <option value="">Select Type</option>
+                        <option value="Double Cabin">Double Cabin</option>
+                        <option value="SUV">SUV</option>
+                        <option value="Sedan">Sedan</option>
+                        <option value="Hatchback">Hatchback</option>
+                        <option value="Truck">Truck</option>
+                        <option value="Van">Van</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="addModel">Model*</label>
+                    <input type="text" id="addModel" required placeholder="Enter model">
+                </div>
+                <div class="form-group">
+                    <label for="addTotalMileage">Total Mileage (km)</label>
+                    <input type="number" id="addTotalMileage" min="0" step="0.1" placeholder="Enter total mileage">
+                </div>
+                <div class="form-group">
+                    <label for="addUnit">Unit</label>
+                    <input type="text" id="addUnit" placeholder="Enter unit">
+                </div>
+                <div class="form-group">
+                    <label for="addWorkshop">Maintaining Workshop</label>
+                    <input type="text" id="addWorkshop" placeholder="Enter maintaining workshop">
+                </div>
+
+                <!-- Maintenance Section -->
+                <div class="maintenance-section">
+                    <h3>Maintenance Configuration</h3>
+                    <p style="color: #666; margin-bottom: 15px;">Select maintenance types and configure their schedules:</p>
+
+                    <div class="maintenance-type-grid" id="maintenanceTypes">
+                        <!-- Maintenance types will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="addVehicle()">Add Vehicle</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Update Vehicle Modal -->
+    <div id="updateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Update Vehicle</h2>
+                <span class="close-btn" onclick="closeModal('updateModal')">&times;</span>
+            </div>
+            <div id="updateVehicleError" class="error-message"></div>
+            <div id="updateVehicleSuccess" class="success-message"></div>
+
+            <div class="choice-buttons">
+                <button class="btn" onclick="showUpdateSection('id')">Search by Vehicle ID</button>
+                <button class="btn" onclick="showUpdateSection('ba_number')">Search by BA Number</button>
+            </div>
+
+            <div id="updateByIdSection" class="form-section">
+                <div class="form-group">
+                    <label for="updateVehicleId">Vehicle ID*</label>
+                    <input type="text" id="updateVehicleId" placeholder="Enter vehicle ID">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleById()">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="updateByBANumberSection" class="form-section">
+                <div class="form-group">
+                    <label for="updateBANumberSearch">BA Number*</label>
+                    <input type="text" id="updateBANumberSearch" placeholder="Enter BA number">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleByBANumber()">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="updateVehicleDetails" style="display: none;">
+                <form id="updateVehicleForm">
+                    <div class="form-group">
+                        <label for="updateVehicleIdField">Vehicle ID*</label>
+                        <input type="text" id="updateVehicleIdField" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateBANumberField">BA Number*</label>
+                        <input type="text" id="updateBANumberField" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateMakeField">Make*</label>
+                        <input type="text" id="updateMakeField" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateTypeField">Type*</label>
+                        <select id="updateTypeField" required>
+                            <option value="">Select Type</option>
+                            <option value="Double Cabin">Double Cabin</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Sedan">Sedan</option>
+                            <option value="Hatchback">Hatchback</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Van">Van</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateModelField">Model*</label>
+                        <input type="text" id="updateModelField" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="updateTotalMileageField">Total Mileage (km)</label>
+                        <input type="number" id="updateTotalMileageField" min="0" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateUnitField">Unit</label>
+                        <input type="text" id="updateUnitField">
+                    </div>
+                    <div class="form-group">
+                        <label for="updateWorkshopField">Maintaining Workshop</label>
+                        <input type="text" id="updateWorkshopField">
+                    </div>
+
+                    <!-- Maintenance Section for Update -->
+                    <div class="maintenance-section">
+                        <h3>Update Maintenance Configuration</h3>
+                        <p style="color: #666; margin-bottom: 15px;">Update maintenance types and their schedules:</p>
+
+                        <div class="maintenance-type-grid" id="updateMaintenanceTypes">
+                            <!-- Maintenance types will be populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal('updateModal')">Cancel</button>
+                        <button type="button" class="btn btn-success" onclick="updateVehicle()">Update Vehicle</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove Vehicle Modal -->
+    <div id="removeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Remove Vehicle</h2>
+                <span class="close-btn" onclick="closeModal('removeModal')">&times;</span>
+            </div>
+            <div id="removeVehicleError" class="error-message"></div>
+            <div id="removeVehicleSuccess" class="success-message"></div>
+
+            <div class="choice-buttons">
+                <button class="btn" onclick="showRemoveSection('id')">Search by Vehicle ID</button>
+                <button class="btn" onclick="showRemoveSection('ba_number')">Search by BA Number</button>
+            </div>
+
+            <div id="removeByIdSection" class="form-section">
+                <div class="form-group">
+                    <label for="removeVehicleId">Vehicle ID*</label>
+                    <input type="text" id="removeVehicleId" placeholder="Enter vehicle ID">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleForRemoval('id')">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="removeByBANumberSection" class="form-section">
+                <div class="form-group">
+                    <label for="removeBANumberSearch">BA Number*</label>
+                    <input type="text" id="removeBANumberSearch" placeholder="Enter BA number">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleForRemoval('ba_number')">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="removeVehicleDetails" style="display: none;">
+                <div id="vehicleInfoForRemoval"></div>
+                <div class="warning-message">
+                    <p><strong>Warning:</strong> Removing this vehicle will permanently delete all associated data including GPS data, events, maintenance records, and other related records. This action cannot be undone.</p>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('removeModal')">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="removeVehicle()">Remove Permanently</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Report Modal -->
+    <div id="maintenanceReportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Maintenance Report</h2>
+                <span class="close-btn" onclick="closeModal('maintenanceReportModal')">&times;</span>
+            </div>
+            <div id="maintenanceReportError" class="error-message"></div>
+            <div id="maintenanceReportSuccess" class="success-message"></div>
+
+            <div class="choice-buttons">
+                <button class="btn" onclick="showMaintenanceReportSection('id')">Search by Vehicle ID</button>
+                <button class="btn" onclick="showMaintenanceReportSection('ba_number')">Search by BA Number</button>
+            </div>
+
+            <div id="maintenanceReportByIdSection" class="form-section">
+                <div class="form-group">
+                    <label for="maintenanceReportVehicleId">Vehicle ID*</label>
+                    <input type="text" id="maintenanceReportVehicleId" placeholder="Enter vehicle ID">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleForMaintenanceReport('id')">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="maintenanceReportByBANumberSection" class="form-section">
+                <div class="form-group">
+                    <label for="maintenanceReportBANumberSearch">BA Number*</label>
+                    <input type="text" id="maintenanceReportBANumberSearch" placeholder="Enter BA number">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleForMaintenanceReport('ba_number')">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="maintenanceReportDetails" style="display: none;">
+                <div id="selectedVehicleInfo"></div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('maintenanceReportModal')">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="generateMaintenanceReport()">Generate Report</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maintenance Report Display Modal -->
+    <div id="maintenanceReportDisplayModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2>Vehicle Maintenance Progress</h2>
+                <span class="close-btn" onclick="closeModal('maintenanceReportDisplayModal')">&times;</span>
+            </div>
+            <div id="maintenanceReportContent" class="print-content">
+                <!-- Report content will be populated here -->
+            </div>
+            <div class="form-actions no-print">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('maintenanceReportDisplayModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Set Speed Limit Modal -->
+    <div id="setSpeedLimitModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Set Speed Limit</h2>
+                <span class="close-btn" onclick="closeModal('setSpeedLimitModal')">&times;</span>
+            </div>
+            <div id="setSpeedLimitError" class="error-message"></div>
+            <div id="setSpeedLimitSuccess" class="success-message"></div>
+
+            <div class="choice-buttons">
+                <button class="btn" onclick="showSetSpeedLimitSection('id')">Search by Vehicle ID</button>
+                <button class="btn" onclick="showSetSpeedLimitSection('ba_number')">Search by BA Number</button>
+            </div>
+
+            <div id="setSpeedLimitByIdSection" class="form-section">
+                <div class="form-group">
+                    <label for="setSpeedLimitVehicleId">Vehicle ID*</label>
+                    <input type="text" id="setSpeedLimitVehicleId" placeholder="Enter vehicle ID">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleForSetSpeedLimit('id')">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="setSpeedLimitByBANumberSection" class="form-section">
+                <div class="form-group">
+                    <label for="setSpeedLimitBANumberSearch">BA Number*</label>
+                    <input type="text" id="setSpeedLimitBANumberSearch" placeholder="Enter BA number">
+                    <button type="button" class="btn btn-info" onclick="loadVehicleForSetSpeedLimit('ba_number')">Load Vehicle</button>
+                </div>
+            </div>
+
+            <div id="setSpeedLimitDetails" style="display: none;">
+                <div id="selectedVehicleInfoForSpeedLimit"></div>
+                <div class="form-group">
+                    <label for="roadType">Road Type*</label>
+                    <select id="roadType" required>
+                        <option value="">Select Road Type</option>
+                        <option value="Motorway">Motorway</option>
+                        <option value="National Highways">National Highways (e.g., GT Road)</option>
+                        <option value="Expressways">Expressways</option>
+                        <option value="Other Roads">Other Roads (Residential, Urban, Near Schools/Hospitals)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="speedLimit">Speed Limit (km/h)*</label>
+                    <input type="number" id="speedLimit" min="0" required placeholder="Enter speed limit">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('setSpeedLimitModal')">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="setSpeedLimit()">Set Speed Limit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logout Modal -->
+    <div id="logoutModal" class="logout-modal">
+        <div class="logout-modal-content">
+            <h3>Logout Confirmation</h3>
+            <p>Are you sure you want to logout?</p>
+            <div class="logout-modal-buttons">
+                <button class="logout-btn logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+                <button class="logout-btn logout-btn-confirm" onclick="confirmLogout()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPage = 1;
+        let selectedVehicleId = null;
+        let selectedVehicleInfo = null;
+
+        // Predefined maintenance types
+        const maintenanceTypes = [
+            'Oil Filter',
+            'Engine Oil',
+            'Fuel Filter',
+            'Battery',
+            'Air Filter',
+            'Differential Oil',
+            'Gear Box Oil',
+            'Timing Belt',
+            'Power Steering Oil',
+            'Transfer Oil'
+        ];
+
+        // Predefined road types
+        const roadTypes = [
+            'Motorway',
+            'National Highways',
+            'Expressways',
+            'Other Roads'
+        ];
+
+        // Initialization on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadVehicles();
+            populateFilterDropdowns();
+            initializeMaintenanceTypes();
+        });
+
+        // Initialize maintenance types in add modal
+        function initializeMaintenanceTypes() {
+            const container = document.getElementById('maintenanceTypes');
+            container.innerHTML = '';
+
+            maintenanceTypes.forEach((type, index) => {
+                const typeCard = document.createElement('div');
+                typeCard.className = 'maintenance-type-card';
+                typeCard.innerHTML = `
+                    <label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer;">
+                        <input type="checkbox" class="maintenance-checkbox" id="maintenance_${index}"
+                               onchange="toggleMaintenanceDetails(${index})">
+                        <strong>${type}</strong>
+                    </label>
+                    <div class="maintenance-details" id="details_${index}">
+                        <div class="form-group">
+                            <label for="lastDone_${index}">Last Done Date*</label>
+                            <input type="date" id="lastDone_${index}">
+                        </div>
+                        <div class="form-group">
+                            <label for="lastDoneMileage_${index}">Last Done Mileage (km)*</label>
+                            <input type="number" id="lastDoneMileage_${index}" min="0" step="0.1" placeholder="Enter last done mileage">
+                        </div>
+                        <div class="periodicity-options">
+                            <label>
+                                <input type="radio" name="periodicity_${index}" value="time"
+                                       onchange="togglePeriodicityFields(${index}, 'time')">
+                                Time Based
+                            </label>
+                            <label>
+                                <input type="radio" name="periodicity_${index}" value="distance"
+                                       onchange="togglePeriodicityFields(${index}, 'distance')">
+                                Distance Based
+                            </label>
+                            <label>
+                                <input type="radio" name="periodicity_${index}" value="both"
+                                       onchange="togglePeriodicityFields(${index}, 'both')">
+                                Both
+                            </label>
+                        </div>
+                        <div id="timeField_${index}" style="display: none;">
+                            <div class="form-group">
+                                <label for="timeInterval_${index}">Time Interval (months)</label>
+                                <input type="number" id="timeInterval_${index}" min="1" placeholder="e.g., 6, 12, 24">
+                            </div>
+                        </div>
+                        <div id="distanceField_${index}" style="display: none;">
+                            <div class="form-group">
+                                <label for="distanceInterval_${index}">Distance Interval (km)</label>
+                                <input type="number" id="distanceInterval_${index}" min="1" placeholder="e.g., 3000, 5000">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(typeCard);
+            });
+        }
+
+        // Toggle maintenance details visibility
+        function toggleMaintenanceDetails(index) {
+            const checkbox = document.getElementById(`maintenance_${index}`);
+            const details = document.getElementById(`details_${index}`);
+            const card = checkbox.closest('.maintenance-type-card');
+
+            if (checkbox.checked) {
+                details.classList.add('show');
+                card.classList.add('selected');
+            } else {
+                details.classList.remove('show');
+                card.classList.remove('selected');
+                // Reset form fields
+                const inputs = details.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.type === 'radio' || input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+                // Hide periodicity fields
+                document.getElementById(`timeField_${index}`).style.display = 'none';
+                document.getElementById(`distanceField_${index}`).style.display = 'none';
+            }
+        }
+
+        // Toggle periodicity fields based on selection
+        function togglePeriodicityFields(index, type) {
+            const timeField = document.getElementById(`timeField_${index}`);
+            const distanceField = document.getElementById(`distanceField_${index}`);
+
+            switch(type) {
+                case 'time':
+                    timeField.style.display = 'block';
+                    distanceField.style.display = 'none';
+                    break;
+                case 'distance':
+                    timeField.style.display = 'none';
+                    distanceField.style.display = 'block';
+                    break;
+                case 'both':
+                    timeField.style.display = 'block';
+                    distanceField.style.display = 'block';
+                    break;
+            }
+        }
+
+        // Load vehicles with optional filters
+        function loadVehicles(page = 1) {
+            currentPage = page;
+            const searchBANumber = document.getElementById('searchBANumber').value;
+            const make = document.getElementById('filterMake').value;
+            const type = document.getElementById('filterType').value;
+            const unit = document.getElementById('filterUnit').value;
+
+            const tableBody = document.getElementById('vehiclesTableBody');
+            const noRecordsMessage = document.getElementById('noRecordsMessage');
+            const pagination = document.getElementById('pagination');
+
+            // Clear previous data
+            tableBody.innerHTML = '';
+            noRecordsMessage.style.display = 'none';
+            pagination.innerHTML = '';
+
+            // Prepare query parameters
+            let params = new URLSearchParams();
+            params.append('page', page);
+            if (searchBANumber) params.append('search_ba_number', searchBANumber);
+            if (make) params.append('make', make);
+            if (type) params.append('type', type);
+            if (unit) params.append('unit', unit);
+
+            // Fetch vehicles data
+            fetch(`/get_vehicles?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicles && data.vehicles.length > 0) {
+                        data.vehicles.forEach(vehicle => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${vehicle.id}</td>
+                                <td>${vehicle.ba_number}</td>
+                                <td>${vehicle.make}</td>
+                                <td>${vehicle.type}</td>
+                                <td>${vehicle.model}</td>
+                                <td>${vehicle.total_milage || 0} km</td>
+                                <td>${vehicle.unit || ''}</td>
+                                <td>${vehicle.maintaining_workshop || ''}</td>
+                                <td>
+                                    <button class="btn btn-info btn-sm" onclick="generateVehicleMaintenanceReport('${vehicle.id}')">Report</button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+
+                        // Create pagination
+                        if (data.total_pages > 1) {
+                            for (let i = 1; i <= data.total_pages; i++) {
+                                const button = document.createElement('button');
+                                button.textContent = i;
+                                button.className = page === i ? 'active' : '';
+                                button.onclick = () => loadVehicles(i);
+                                pagination.appendChild(button);
+                            }
+                        }
+                    } else {
+                        showNoRecords();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicles:', error);
+                    showNoRecords('Failed to load vehicle data. Please try again.');
+                });
+        }
+
+        // Apply filters
+        function applyFilters() {
+            loadVehicles(1);
+        }
+
+        // Reset filters
+        function resetFilters() {
+            document.getElementById('searchBANumber').value = '';
+            document.getElementById('filterMake').value = '';
+            document.getElementById('filterType').value = '';
+            document.getElementById('filterUnit').value = '';
+            loadVehicles(1);
+        }
+
+        // Show no records message
+        function showNoRecords(message = 'No vehicle records found.') {
+            const tableBody = document.getElementById('vehiclesTableBody');
+            const noRecordsMessage = document.getElementById('noRecordsMessage');
+
+            tableBody.innerHTML = '';
+            noRecordsMessage.textContent = message;
+            noRecordsMessage.style.display = 'block';
+        }
+
+        // Populate filter dropdowns
+        function populateFilterDropdowns() {
+            const makeDropdown = document.getElementById('filterMake');
+            const typeDropdown = document.getElementById('filterType');
+            const unitDropdown = document.getElementById('filterUnit');
+
+            fetch('/get_vehicle_filters')
+                .then(response => response.json())
+                .then(data => {
+                    // Populate makes
+                    if (data.makes && data.makes.length > 0) {
+                        data.makes.forEach(make => {
+                            const option = document.createElement('option');
+                            option.value = make;
+                            option.textContent = make;
+                            makeDropdown.appendChild(option);
+                        });
+                    }
+
+                    // Populate types
+                    if (data.types && data.types.length > 0) {
+                        data.types.forEach(type => {
+                            const option = document.createElement('option');
+                            option.value = type;
+                            option.textContent = type;
+                            typeDropdown.appendChild(option);
+                        });
+                    }
+
+                    // Populate units
+                    if (data.units && data.units.length > 0) {
+                        data.units.forEach(unit => {
+                            const option = document.createElement('option');
+                            option.value = unit;
+                            option.textContent = unit;
+                            unitDropdown.appendChild(option);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching filter options:', error);
+                });
+        }
+
+        // Modal Functions
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'block';
+            resetAddForm();
+        }
+
+        function openUpdateModal() {
+            document.getElementById('updateModal').style.display = 'block';
+            resetUpdateForm();
+        }
+
+        function openRemoveModal() {
+            document.getElementById('removeModal').style.display = 'block';
+            resetRemoveForm();
+        }
+
+        function openMaintenanceReportModal() {
+            document.getElementById('maintenanceReportModal').style.display = 'block';
+            resetMaintenanceReportForm();
+        }
+
+        function openSetSpeedLimitModal() {
+            document.getElementById('setSpeedLimitModal').style.display = 'block';
+            resetSetSpeedLimitForm();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Reset form functions
+        function resetAddForm() {
+            document.getElementById('addVehicleForm').reset();
+            document.getElementById('addVehicleError').textContent = '';
+            document.getElementById('addVehicleSuccess').textContent = '';
+
+            // Reset maintenance checkboxes and details
+            maintenanceTypes.forEach((type, index) => {
+                const checkbox = document.getElementById(`maintenance_${index}`);
+                const details = document.getElementById(`details_${index}`);
+                const card = checkbox.closest('.maintenance-type-card');
+
+                checkbox.checked = false;
+                details.classList.remove('show');
+                card.classList.remove('selected');
+
+                // Reset all form fields in details
+                const inputs = details.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.type === 'radio' || input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+
+                // Hide periodicity fields
+                document.getElementById(`timeField_${index}`).style.display = 'none';
+                document.getElementById(`distanceField_${index}`).style.display = 'none';
+            });
+        }
+
+        function resetUpdateForm() {
+            document.getElementById('updateVehicleForm').reset();
+            document.getElementById('updateByIdSection').style.display = 'none';
+            document.getElementById('updateByBANumberSection').style.display = 'none';
+            document.getElementById('updateVehicleDetails').style.display = 'none';
+            document.getElementById('updateVehicleError').textContent = '';
+            document.getElementById('updateVehicleSuccess').textContent = '';
+            selectedVehicleId = null;
+        }
+
+        function resetRemoveForm() {
+            document.getElementById('removeByIdSection').style.display = 'none';
+            document.getElementById('removeByBANumberSection').style.display = 'none';
+            document.getElementById('removeVehicleDetails').style.display = 'none';
+            document.getElementById('removeVehicleError').textContent = '';
+            document.getElementById('removeVehicleSuccess').textContent = '';
+            selectedVehicleId = null;
+        }
+
+        function resetMaintenanceReportForm() {
+            document.getElementById('maintenanceReportByIdSection').style.display = 'none';
+            document.getElementById('maintenanceReportByBANumberSection').style.display = 'none';
+            document.getElementById('maintenanceReportDetails').style.display = 'none';
+            document.getElementById('maintenanceReportError').textContent = '';
+            document.getElementById('maintenanceReportSuccess').textContent = '';
+            selectedVehicleId = null;
+            selectedVehicleInfo = null;
+        }
+
+        function resetSetSpeedLimitForm() {
+            document.getElementById('setSpeedLimitByIdSection').style.display = 'none';
+            document.getElementById('setSpeedLimitByBANumberSection').style.display = 'none';
+            document.getElementById('setSpeedLimitDetails').style.display = 'none';
+            document.getElementById('setSpeedLimitError').textContent = '';
+            document.getElementById('setSpeedLimitSuccess').textContent = '';
+            selectedVehicleId = null;
+            selectedVehicleInfo = null;
+        }
+
+        // Show sections for update modal
+        function showUpdateSection(type) {
+            document.getElementById('updateByIdSection').style.display = type === 'id' ? 'block' : 'none';
+            document.getElementById('updateByBANumberSection').style.display = type === 'ba_number' ? 'block' : 'none';
+            document.getElementById('updateVehicleDetails').style.display = 'none';
+        }
+
+        // Show sections for remove modal
+        function showRemoveSection(type) {
+            document.getElementById('removeByIdSection').style.display = type === 'id' ? 'block' : 'none';
+            document.getElementById('removeByBANumberSection').style.display = type === 'ba_number' ? 'block' : 'none';
+            document.getElementById('removeVehicleDetails').style.display = 'none';
+        }
+
+        // Show sections for maintenance report modal
+        function showMaintenanceReportSection(type) {
+            document.getElementById('maintenanceReportByIdSection').style.display = type === 'id' ? 'block' : 'none';
+            document.getElementById('maintenanceReportByBANumberSection').style.display = type === 'ba_number' ? 'block' : 'none';
+            document.getElementById('maintenanceReportDetails').style.display = 'none';
+        }
+
+        // Show sections for set speed limit modal
+        function showSetSpeedLimitSection(type) {
+            document.getElementById('setSpeedLimitByIdSection').style.display = type === 'id' ? 'block' : 'none';
+            document.getElementById('setSpeedLimitByBANumberSection').style.display = type === 'ba_number' ? 'block' : 'none';
+            document.getElementById('setSpeedLimitDetails').style.display = 'none';
+        }
+
+        // Add new vehicle
+        function addVehicle() {
+            const vehicleId = document.getElementById('addVehicleId').value.trim();
+            const baNumber = document.getElementById('addBANumber').value.trim();
+            const make = document.getElementById('addMake').value.trim();
+            const type = document.getElementById('addType').value;
+            const model = document.getElementById('addModel').value.trim();
+            const totalMileage = document.getElementById('addTotalMileage').value;
+            const unit = document.getElementById('addUnit').value.trim();
+            const workshop = document.getElementById('addWorkshop').value.trim();
+            const errorElement = document.getElementById('addVehicleError');
+            const successElement = document.getElementById('addVehicleSuccess');
+
+            // Clear previous messages
+            errorElement.textContent = '';
+            successElement.textContent = '';
+
+            // Validate vehicle fields
+            if (!vehicleId || !baNumber || !make || !type || !model) {
+                errorElement.textContent = 'Please fill all required vehicle fields.';
+                return;
+            }
+
+            // Collect maintenance data
+            const maintenanceData = [];
+            let validationError = false;
+
+            maintenanceTypes.forEach((maintenanceType, index) => {
+                const checkbox = document.getElementById(`maintenance_${index}`);
+                if (checkbox.checked) {
+                    const lastDone = document.getElementById(`lastDone_${index}`).value;
+                    const lastDoneMileage = document.getElementById(`lastDoneMileage_${index}`).value;
+                    const periodicityRadios = document.querySelectorAll(`input[name="periodicity_${index}"]:checked`);
+
+                    if (!lastDone) {
+                        errorElement.textContent = `Please enter Last Done Date for ${maintenanceType}.`;
+                        validationError = true;
+                        return;
+                    }
+
+                    if (!lastDoneMileage) {
+                        errorElement.textContent = `Please enter Last Done Mileage for ${maintenanceType}.`;
+                        validationError = true;
+                        return;
+                    }
+
+                    if (periodicityRadios.length === 0) {
+                        errorElement.textContent = `Please select periodicity for ${maintenanceType}.`;
+                        validationError = true;
+                        return;
+                    }
+
+                    const periodicity = periodicityRadios[0].value;
+                    let timeInterval = null;
+                    let distanceInterval = null;
+
+                    if (periodicity === 'time' || periodicity === 'both') {
+                        timeInterval = document.getElementById(`timeInterval_${index}`).value;
+                        if (!timeInterval) {
+                            errorElement.textContent = `Please enter time interval for ${maintenanceType}.`;
+                            validationError = true;
+                            return;
+                        }
+                    }
+
+                    if (periodicity === 'distance' || periodicity === 'both') {
+                        distanceInterval = document.getElementById(`distanceInterval_${index}`).value;
+                        if (!distanceInterval) {
+                            errorElement.textContent = `Please enter distance interval for ${maintenanceType}.`;
+                            validationError = true;
+                            return;
+                        }
+                    }
+
+                    maintenanceData.push({
+                        type: maintenanceType,
+                        last_done: lastDone,
+                        last_done_mileage: parseFloat(lastDoneMileage),
+                        periodicity: periodicity,
+                        time_interval_months: timeInterval ? parseInt(timeInterval) : null,
+                        distance_interval_km: distanceInterval ? parseInt(distanceInterval) : null
+                    });
+                }
+            });
+
+            if (validationError) return;
+
+            // Prepare data to send
+            const vehicleData = {
+                id: vehicleId,
+                ba_number: baNumber,
+                make: make,
+                type: type,
+                model: model,
+                total_milage: totalMileage ? parseFloat(totalMileage) : 0,
+                unit: unit,
+                maintaining_workshop: workshop,
+                maintenance_data: maintenanceData
+            };
+
+            // Send data to backend
+            fetch('/add_vehicle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(vehicleData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successElement.textContent = 'Vehicle added successfully!';
+                    resetAddForm();
+                    loadVehicles();
+                    setTimeout(() => {
+                        closeModal('addModal');
+                        successElement.textContent = '';
+                    }, 2000);
+                } else {
+                    errorElement.textContent = data.message || 'Failed to add vehicle.';
+                }
+            })
+            .catch(error => {
+                console.error('Error adding vehicle:', error);
+                errorElement.textContent = 'An error occurred. Please try again.';
+            });
+        }
+
+        // Load vehicle by ID for update
+        function loadVehicleById() {
+            const vehicleId = document.getElementById('updateVehicleId').value;
+            const errorElement = document.getElementById('updateVehicleError');
+
+            if (!vehicleId) {
+                errorElement.textContent = 'Please enter a vehicle ID.';
+                return;
+            }
+
+            fetch(`/get_vehicle_by_id?vehicle_id=${vehicleId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicle) {
+                        populateUpdateForm(data.vehicle, data.maintenance_records || []);
+                        selectedVehicleId = vehicleId;
+                        document.getElementById('updateVehicleDetails').style.display = 'block';
+                        errorElement.textContent = '';
+                    } else {
+                        errorElement.textContent = data.message || 'Vehicle not found.';
+                        document.getElementById('updateVehicleDetails').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicle:', error);
+                    errorElement.textContent = 'Error loading vehicle details.';
+                });
+        }
+
+        // Load vehicle by BA number for update
+        function loadVehicleByBANumber() {
+            const baNumber = document.getElementById('updateBANumberSearch').value.trim();
+            const errorElement = document.getElementById('updateVehicleError');
+
+            if (!baNumber) {
+                errorElement.textContent = 'Please enter a BA number.';
+                return;
+            }
+
+            fetch(`/get_vehicle_by_ba_number?ba_number=${encodeURIComponent(baNumber)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicle) {
+                        populateUpdateForm(data.vehicle, data.maintenance_records || []);
+                        selectedVehicleId = data.vehicle.id;
+                        document.getElementById('updateVehicleDetails').style.display = 'block';
+                        errorElement.textContent = '';
+                    } else {
+                        errorElement.textContent = data.message || 'Vehicle not found.';
+                        document.getElementById('updateVehicleDetails').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicle:', error);
+                    errorElement.textContent = 'Error loading vehicle details.';
+                });
+        }
+
+        // Populate update form with vehicle data
+        function populateUpdateForm(vehicle, maintenanceRecords) {
+            document.getElementById('updateVehicleIdField').value = vehicle.id;
+            document.getElementById('updateBANumberField').value = vehicle.ba_number;
+            document.getElementById('updateMakeField').value = vehicle.make;
+            document.getElementById('updateTypeField').value = vehicle.type;
+            document.getElementById('updateModelField').value = vehicle.model;
+            document.getElementById('updateTotalMileageField').value = vehicle.total_milage || 0;
+            document.getElementById('updateUnitField').value = vehicle.unit || '';
+            document.getElementById('updateWorkshopField').value = vehicle.maintaining_workshop || '';
+
+            // Populate maintenance data
+            populateUpdateMaintenanceTypes(maintenanceRecords);
+        }
+
+        // Populate maintenance types for update form
+        function populateUpdateMaintenanceTypes(maintenanceRecords) {
+            const container = document.getElementById('updateMaintenanceTypes');
+            container.innerHTML = '';
+
+            maintenanceTypes.forEach((type, index) => {
+                const existingRecord = maintenanceRecords.find(record => record.type === type);
+
+                const typeCard = document.createElement('div');
+                typeCard.className = 'maintenance-type-card';
+
+                const isSelected = existingRecord ? true : false;
+                if (isSelected) {
+                    typeCard.classList.add('selected');
+                }
+
+                typeCard.innerHTML = `
+                    <label style="display: flex; align-items: center; margin-bottom: 10px; cursor: pointer;">
+                        <input type="checkbox" class="maintenance-checkbox" id="updateMaintenance_${index}"
+                               onchange="toggleUpdateMaintenanceDetails(${index})" ${isSelected ? 'checked' : ''}>
+                        <strong>${type}</strong>
+                    </label>
+                    <div class="maintenance-details ${isSelected ? 'show' : ''}" id="updateDetails_${index}">
+                        <div class="form-group">
+                            <label for="updateLastDone_${index}">Last Done Date*</label>
+                            <input type="date" id="updateLastDone_${index}" value="${existingRecord ? existingRecord.last_done.split(' ')[0] : ''}">
+                        </div>
+                        <div class="form-group">
+                            <label for="updateLastDoneMileage_${index}">Last Done Mileage (km)*</label>
+                            <input type="number" id="updateLastDoneMileage_${index}" min="0" step="0.1" value="${existingRecord ? existingRecord.last_done_mileage : ''}">
+                        </div>
+                        <div class="periodicity-options">
+                            <label>
+                                <input type="radio" name="updatePeriodicity_${index}" value="time"
+                                       onchange="toggleUpdatePeriodicityFields(${index}, 'time')"
+                                       ${existingRecord && existingRecord.periodicity === 0 ? 'checked' : ''}>
+                                Time Based
+                            </label>
+                            <label>
+                                <input type="radio" name="updatePeriodicity_${index}" value="distance"
+                                       onchange="toggleUpdatePeriodicityFields(${index}, 'distance')"
+                                       ${existingRecord && existingRecord.periodicity === 1 ? 'checked' : ''}>
+                                Distance Based
+                            </label>
+                            <label>
+                                <input type="radio" name="updatePeriodicity_${index}" value="both"
+                                       onchange="toggleUpdatePeriodicityFields(${index}, 'both')"
+                                       ${existingRecord && existingRecord.periodicity === 2 ? 'checked' : ''}>
+                                Both
+                            </label>
+                        </div>
+                        <div id="updateTimeField_${index}" style="display: none;">
+                            <div class="form-group">
+                                <label for="updateTimeInterval_${index}">Time Interval (months)</label>
+                                <input type="number" id="updateTimeInterval_${index}" min="1" placeholder="e.g., 6, 12, 24"
+                                       value="${existingRecord ? existingRecord.time_interval_months || '' : ''}">
+                            </div>
+                        </div>
+                        <div id="updateDistanceField_${index}" style="display: none;">
+                            <div class="form-group">
+                                <label for="updateDistanceInterval_${index}">Distance Interval (km)</label>
+                                <input type="number" id="updateDistanceInterval_${index}" min="1" placeholder="e.g., 3000, 5000"
+                                       value="${existingRecord ? existingRecord.distance_interval_km || '' : ''}">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(typeCard);
+
+                // Show appropriate periodicity fields if record exists
+                if (existingRecord) {
+                    setTimeout(() => {
+                        const periodicity = existingRecord.periodicity;
+                        if (periodicity === 0 || periodicity === 2) {
+                            document.getElementById(`updateTimeField_${index}`).style.display = 'block';
+                        }
+                        if (periodicity === 1 || periodicity === 2) {
+                            document.getElementById(`updateDistanceField_${index}`).style.display = 'block';
+                        }
+                    }, 100);
+                }
+            });
+        }
+
+        // Toggle maintenance details visibility for update form
+        function toggleUpdateMaintenanceDetails(index) {
+            const checkbox = document.getElementById(`updateMaintenance_${index}`);
+            const details = document.getElementById(`updateDetails_${index}`);
+            const card = checkbox.closest('.maintenance-type-card');
+
+            if (checkbox.checked) {
+                details.classList.add('show');
+                card.classList.add('selected');
+            } else {
+                details.classList.remove('show');
+                card.classList.remove('selected');
+                // Reset form fields
+                const inputs = details.querySelectorAll('input');
+                inputs.forEach(input => {
+                    if (input.type === 'radio' || input.type === 'checkbox') {
+                        input.checked = false;
+                    } else {
+                        input.value = '';
+                    }
+                });
+                // Hide periodicity fields
+                document.getElementById(`updateTimeField_${index}`).style.display = 'none';
+                document.getElementById(`updateDistanceField_${index}`).style.display = 'none';
+            }
+        }
+
+        // Toggle periodicity fields for update form
+        function toggleUpdatePeriodicityFields(index, type) {
+            const timeField = document.getElementById(`updateTimeField_${index}`);
+            const distanceField = document.getElementById(`updateDistanceField_${index}`);
+
+            switch(type) {
+                case 'time':
+                    timeField.style.display = 'block';
+                    distanceField.style.display = 'none';
+                    break;
+                case 'distance':
+                    timeField.style.display = 'none';
+                    distanceField.style.display = 'block';
+                    break;
+                case 'both':
+                    timeField.style.display = 'block';
+                    distanceField.style.display = 'block';
+                    break;
+            }
+        }
+
+        // Update vehicle
+        function updateVehicle() {
+            const vehicleIdField = document.getElementById('updateVehicleIdField').value.trim();
+            const baNumber = document.getElementById('updateBANumberField').value.trim();
+            const make = document.getElementById('updateMakeField').value.trim();
+            const type = document.getElementById('updateTypeField').value;
+            const model = document.getElementById('updateModelField').value.trim();
+            const totalMileage = document.getElementById('updateTotalMileageField').value;
+            const unit = document.getElementById('updateUnitField').value.trim();
+            const workshop = document.getElementById('updateWorkshopField').value.trim();
+            const errorElement = document.getElementById('updateVehicleError');
+            const successElement = document.getElementById('updateVehicleSuccess');
+
+            // Clear previous messages
+            errorElement.textContent = '';
+            successElement.textContent = '';
+
+            // Validate vehicle fields
+            if (!vehicleIdField || !baNumber || !make || !type || !model) {
+                errorElement.textContent = 'Please fill all required vehicle fields.';
+                return;
+            }
+
+            // Collect maintenance data
+            const maintenanceData = [];
+            let validationError = false;
+
+            maintenanceTypes.forEach((maintenanceType, index) => {
+                const checkbox = document.getElementById(`updateMaintenance_${index}`);
+                if (checkbox.checked) {
+                    const lastDone = document.getElementById(`updateLastDone_${index}`).value;
+                    const lastDoneMileage = document.getElementById(`updateLastDoneMileage_${index}`).value;
+                    const periodicityRadios = document.querySelectorAll(`input[name="updatePeriodicity_${index}"]:checked`);
+
+                    if (!lastDone) {
+                        errorElement.textContent = `Please enter Last Done Date for ${maintenanceType}.`;
+                        validationError = true;
+                        return;
+                    }
+
+                    if (!lastDoneMileage) {
+                        errorElement.textContent = `Please enter Last Done Mileage for ${maintenanceType}.`;
+                        validationError = true;
+                        return;
+                    }
+
+                    if (periodicityRadios.length === 0) {
+                        errorElement.textContent = `Please select periodicity for ${maintenanceType}.`;
+                        validationError = true;
+                        return;
+                    }
+
+                    const periodicity = periodicityRadios[0].value;
+                    let timeInterval = null;
+                    let distanceInterval = null;
+
+                    if (periodicity === 'time' || periodicity === 'both') {
+                        timeInterval = document.getElementById(`updateTimeInterval_${index}`).value;
+                        if (!timeInterval) {
+                            errorElement.textContent = `Please enter time interval for ${maintenanceType}.`;
+                            validationError = true;
+                            return;
+                        }
+                    }
+
+                    if (periodicity === 'distance' || periodicity === 'both') {
+                        distanceInterval = document.getElementById(`updateDistanceInterval_${index}`).value;
+                        if (!distanceInterval) {
+                            errorElement.textContent = `Please enter distance interval for ${maintenanceType}.`;
+                            validationError = true;
+                            return;
+                        }
+                    }
+
+                    maintenanceData.push({
+                        type: maintenanceType,
+                        last_done: lastDone,
+                        last_done_mileage: parseFloat(lastDoneMileage),
+                        periodicity: periodicity,
+                        time_interval_months: timeInterval ? parseInt(timeInterval) : null,
+                        distance_interval_km: distanceInterval ? parseInt(distanceInterval) : null
+                    });
+                }
+            });
+
+            if (validationError) return;
+
+            // Prepare data to send
+            const vehicleData = {
+                vehicle_id: selectedVehicleId,
+                new_vehicle_id: vehicleIdField,
+                ba_number: baNumber,
+                make: make,
+                type: type,
+                model: model,
+                total_milage: totalMileage ? parseFloat(totalMileage) : 0,
+                unit: unit,
+                maintaining_workshop: workshop,
+                maintenance_data: maintenanceData
+            };
+
+            // Send data to backend
+            fetch('/update_vehicle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(vehicleData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successElement.textContent = 'Vehicle updated successfully!';
+                    loadVehicles();
+                    setTimeout(() => {
+                        closeModal('updateModal');
+                        successElement.textContent = '';
+                        resetUpdateForm();
+                    }, 2000);
+                } else {
+                    errorElement.textContent = data.message || 'Failed to update vehicle.';
+                }
+            })
+            .catch(error => {
+                console.error('Error updating vehicle:', error);
+                errorElement.textContent = 'An error occurred. Please try again.';
+            });
+        }
+
+        // Load vehicle for removal
+        function loadVehicleForRemoval(searchType) {
+            const vehicleId = searchType === 'id' ? document.getElementById('removeVehicleId').value.trim() : null;
+            const baNumber = searchType === 'ba_number' ? document.getElementById('removeBANumberSearch').value.trim() : null;
+            const errorElement = document.getElementById('removeVehicleError');
+
+            if (!vehicleId && !baNumber) {
+                errorElement.textContent = searchType === 'id' ? 'Please enter a vehicle ID.' : 'Please enter a BA number.';
+                return;
+            }
+
+            const searchParam = searchType === 'id' ? `vehicle_id=${vehicleId}` : `ba_number=${encodeURIComponent(baNumber)}`;
+            const endpoint = searchType === 'id' ? '/get_vehicle_by_id' : '/get_vehicle_by_ba_number';
+
+            fetch(`${endpoint}?${searchParam}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicle) {
+                        selectedVehicleId = data.vehicle.id;
+                        const vehicleInfo = `
+                            <div class="report-info-section">
+                                <h3>Vehicle Information</h3>
+                                <p><strong>Vehicle ID:</strong> ${data.vehicle.id}</p>
+                                <p><strong>BA Number:</strong> ${data.vehicle.ba_number}</p>
+                                <p><strong>Make:</strong> ${data.vehicle.make}</p>
+                                <p><strong>Type:</strong> ${data.vehicle.type}</p>
+                                <p><strong>Model:</strong> ${data.vehicle.model}</p>
+                                <p><strong>Total Mileage:</strong> ${data.vehicle.total_milage || 0} km</p>
+                                <p><strong>Unit:</strong> ${data.vehicle.unit || 'N/A'}</p>
+                                <p><strong>Maintaining Workshop:</strong> ${data.vehicle.maintaining_workshop || 'N/A'}</p>
+                            </div>
+                        `;
+                        document.getElementById('vehicleInfoForRemoval').innerHTML = vehicleInfo;
+                        document.getElementById('removeVehicleDetails').style.display = 'block';
+                        errorElement.textContent = '';
+                    } else {
+                        errorElement.textContent = data.message || 'Vehicle not found.';
+                        document.getElementById('removeVehicleDetails').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicle for removal:', error);
+                    errorElement.textContent = 'Error loading vehicle details.';
+                });
+        }
+
+        // Remove vehicle
+        function removeVehicle() {
+            const errorElement = document.getElementById('removeVehicleError');
+            const successElement = document.getElementById('removeVehicleSuccess');
+
+            if (!selectedVehicleId) {
+                errorElement.textContent = 'No vehicle selected for removal.';
+                return;
+            }
+
+            fetch('/remove_vehicle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ vehicle_id: selectedVehicleId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successElement.textContent = 'Vehicle removed successfully!';
+                    loadVehicles();
+                    setTimeout(() => {
+                        closeModal('removeModal');
+                        successElement.textContent = '';
+                        resetRemoveForm();
+                    }, 2000);
+                } else {
+                    errorElement.textContent = data.message || 'Failed to remove vehicle.';
+                }
+            })
+            .catch(error => {
+                console.error('Error removing vehicle:', error);
+                errorElement.textContent = 'An error occurred. Please try again.';
+            });
+        }
+
+        // Load vehicle for maintenance report
+        function loadVehicleForMaintenanceReport(searchType) {
+            const vehicleId = searchType === 'id' ? document.getElementById('maintenanceReportVehicleId').value.trim() : null;
+            const baNumber = searchType === 'ba_number' ? document.getElementById('maintenanceReportBANumberSearch').value.trim() : null;
+            const errorElement = document.getElementById('maintenanceReportError');
+
+            if (!vehicleId && !baNumber) {
+                errorElement.textContent = searchType === 'id' ? 'Please enter a vehicle ID.' : 'Please enter a BA number.';
+                return;
+            }
+
+            const searchParam = searchType === 'id' ? `vehicle_id=${vehicleId}` : `ba_number=${encodeURIComponent(baNumber)}`;
+            const endpoint = searchType === 'id' ? '/get_vehicle_by_id' : '/get_vehicle_by_ba_number';
+
+            fetch(`${endpoint}?${searchParam}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicle) {
+                        selectedVehicleId = data.vehicle.id;
+                        selectedVehicleInfo = data.vehicle;
+                        const vehicleInfo = `
+                            <div class="report-info-section">
+                                <h3>Selected Vehicle</h3>
+                                <p><strong>Vehicle ID:</strong> ${data.vehicle.id}</p>
+                                <p><strong>BA Number:</strong> ${data.vehicle.ba_number}</p>
+                                <p><strong>Make:</strong> ${data.vehicle.make}</p>
+                                <p><strong>Type:</strong> ${data.vehicle.type}</p>
+                                <p><strong>Model:</strong> ${data.vehicle.model}</p>
+                                <p><strong>Total Mileage:</strong> ${data.vehicle.total_milage || 0} km</p>
+                                <p><strong>Unit:</strong> ${data.vehicle.unit || 'N/A'}</p>
+                                <p><strong>Maintaining Workshop:</strong> ${data.vehicle.maintaining_workshop || 'N/A'}</p>
+                            </div>
+                        `;
+                        document.getElementById('selectedVehicleInfo').innerHTML = vehicleInfo;
+                        document.getElementById('maintenanceReportDetails').style.display = 'block';
+                        errorElement.textContent = '';
+                    } else {
+                        errorElement.textContent = data.message || 'Vehicle not found.';
+                        document.getElementById('maintenanceReportDetails').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicle for maintenance report:', error);
+                    errorElement.textContent = 'Error loading vehicle details.';
+                });
+        }
+
+        // Generate maintenance report
+        function generateMaintenanceReport() {
+            if (!selectedVehicleId) {
+                document.getElementById('maintenanceReportError').textContent = 'No vehicle selected for maintenance report.';
+                return;
+            }
+
+            fetch(`/generate_vehicle_maintenance_report?vehicle_id=${selectedVehicleId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.maintenance_report) {
+                        displayMaintenanceReport(data.maintenance_report, selectedVehicleInfo);
+                        closeModal('maintenanceReportModal');
+                        document.getElementById('maintenanceReportDisplayModal').style.display = 'block';
+                    } else {
+                        document.getElementById('maintenanceReportError').textContent = data.message || 'Failed to generate maintenance report.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error generating maintenance report:', error);
+                    document.getElementById('maintenanceReportError').textContent = 'Error generating maintenance report.';
+                });
+        }
+
+        // Display maintenance report
+        function displayMaintenanceReport(report, vehicleInfo) {
+            const content = document.getElementById('maintenanceReportContent');
+            let html = `
+                <div class="report-info-section">
+                    <h3>Vehicle Information</h3>
+                    <p><strong>Vehicle ID:</strong> ${vehicleInfo.id}</p>
+                    <p><strong>BA Number:</strong> ${vehicleInfo.ba_number}</p>
+                    <p><strong>Make:</strong> ${vehicleInfo.make}</p>
+                    <p><strong>Type:</strong> ${vehicleInfo.type}</p>
+                    <p><strong>Model:</strong> ${vehicleInfo.model}</p>
+                    <p><strong>Total Mileage:</strong> ${vehicleInfo.total_milage || 0} km</p>
+                    <p><strong>Unit:</strong> ${vehicleInfo.unit || 'N/A'}</p>
+                    <p><strong>Maintaining Workshop:</strong> ${vehicleInfo.maintaining_workshop || 'N/A'}</p>
+                </div>
+                <h3>Maintenance Progress</h3>
+                <div class="maintenance-report">
+            `;
+
+            report.forEach(item => {
+                let progressClass = '';
+                let progressWidth = item.progress_percentage ? `${Math.min(item.progress_percentage, 100)}%` : '0%';
+                let progressText = item.progress_percentage ? `${item.progress_percentage.toFixed(1)}%` : '0%';
+
+                // Set progress bar color based on status
+                switch (item.status) {
+                    case 'Overdue':
+                        progressClass = 'progress-red';
+                        break;
+                    case 'Due Soon':
+                        progressClass = 'progress-yellow';
+                        break;
+                    case 'Done':
+                        progressClass = 'progress-green';
+                        break;
+                    case 'On Schedule':
+                        progressClass = 'progress-green';
+                        break;
+                    default:
+                        progressClass = 'progress-yellow';
+                }
+
+                // For overdue items, show 100% red bar
+                if (item.status === 'Overdue') {
+                    progressWidth = '100%';
+                    progressText = 'Overdue';
+                }
+
+                html += `
+                    <div class="maintenance-item-report">
+                        <h4>${item.type}</h4>
+                        <p><strong>Status:</strong> <span style="color: ${item.status === 'Overdue' ? '#dc3545' : item.status === 'Due Soon' ? '#ffc107' : '#28a745'}">${item.status}</span></p>
+                        <p><strong>Last Done:</strong> ${item.last_done || 'N/A'}</p>
+                        <p><strong>Last Done Mileage:</strong> ${item.last_done_mileage || 0} km</p>
+                        <p><strong>Next Due:</strong> ${item.next_due || 'N/A'}</p>
+                        <p><strong>Next Due Mileage:</strong> ${item.next_due_mileage || 'N/A'} ${item.next_due_mileage ? 'km' : ''}</p>
+                        <p><strong>Periodicity:</strong> ${item.periodicity === 0 ? 'Time Based' : item.periodicity === 1 ? 'Distance Based' : 'Both'}</p>
+                        ${item.time_interval_months ? `<p><strong>Time Interval:</strong> ${item.time_interval_months} months</p>` : ''}
+                        ${item.distance_interval_km ? `<p><strong>Distance Interval:</strong> ${item.distance_interval_km} km</p>` : ''}
+                        <p><strong>Progress:</strong></p>
+                        <div class="progress-bar">
+                            <div class="progress-fill ${progressClass}" style="width: ${progressWidth}">
+                                ${progressText}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        // Load vehicle for setting speed limit
+        function loadVehicleForSetSpeedLimit(searchType) {
+            const vehicleId = searchType === 'id' ? document.getElementById('setSpeedLimitVehicleId').value.trim() : null;
+            const baNumber = searchType === 'ba_number' ? document.getElementById('setSpeedLimitBANumberSearch').value.trim() : null;
+            const errorElement = document.getElementById('setSpeedLimitError');
+
+            if (!vehicleId && !baNumber) {
+                errorElement.textContent = searchType === 'id' ? 'Please enter a vehicle ID.' : 'Please enter a BA number.';
+                return;
+            }
+
+            const searchParam = searchType === 'id' ? `vehicle_id=${vehicleId}` : `ba_number=${encodeURIComponent(baNumber)}`;
+            const endpoint = searchType === 'id' ? '/get_vehicle_by_id' : '/get_vehicle_by_ba_number';
+
+            fetch(`${endpoint}?${searchParam}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicle) {
+                        selectedVehicleId = data.vehicle.id;
+                        selectedVehicleInfo = data.vehicle;
+                        const vehicleInfo = `
+                            <div class="report-info-section">
+                                <h3>Selected Vehicle</h3>
+                                <p><strong>Vehicle ID:</strong> ${data.vehicle.id}</p>
+                                <p><strong>BA Number:</strong> ${data.vehicle.ba_number}</p>
+                                <p><strong>Make:</strong> ${data.vehicle.make}</p>
+                                <p><strong>Type:</strong> ${data.vehicle.type}</p>
+                                <p><strong>Model:</strong> ${data.vehicle.model}</p>
+                                <p><strong>Total Mileage:</strong> ${data.vehicle.total_milage || 0} km</p>
+                                <p><strong>Unit:</strong> ${data.vehicle.unit || 'N/A'}</p>
+                                <p><strong>Maintaining Workshop:</strong> ${data.vehicle.maintaining_workshop || 'N/A'}</p>
+                            </div>
+                        `;
+                        document.getElementById('selectedVehicleInfoForSpeedLimit').innerHTML = vehicleInfo;
+                        document.getElementById('setSpeedLimitDetails').style.display = 'block';
+                        errorElement.textContent = '';
+                    } else {
+                        errorElement.textContent = data.message || 'Vehicle not found.';
+                        document.getElementById('setSpeedLimitDetails').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicle for speed limit:', error);
+                    errorElement.textContent = 'Error loading vehicle details.';
+                });
+        }
+
+        // Set speed limit
+        function setSpeedLimit() {
+            const roadType = document.getElementById('roadType').value;
+            const speedLimit = document.getElementById('speedLimit').value;
+            const errorElement = document.getElementById('setSpeedLimitError');
+            const successElement = document.getElementById('setSpeedLimitSuccess');
+
+            if (!selectedVehicleId) {
+                errorElement.textContent = 'No vehicle selected.';
+                return;
+            }
+
+            if (!roadType) {
+                errorElement.textContent = 'Please select a road type.';
+                return;
+            }
+
+            if (!speedLimit || speedLimit <= 0) {
+                errorElement.textContent = 'Please enter a valid speed limit.';
+                return;
+            }
+
+            const data = {
+                vehicle_id: selectedVehicleId,
+                road_type: roadType,
+                speed_limit: parseInt(speedLimit)
+            };
+
+            fetch('/set_speed_limit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successElement.textContent = 'Speed limit set successfully!';
+                    setTimeout(() => {
+                        closeModal('setSpeedLimitModal');
+                        successElement.textContent = '';
+                        resetSetSpeedLimitForm();
+                    }, 2000);
+                } else {
+                    errorElement.textContent = data.message || 'Failed to set speed limit.';
+                }
+            })
+            .catch(error => {
+                console.error('Error setting speed limit:', error);
+                errorElement.textContent = 'An error occurred. Please try again.';
+            });
+        }
+
+        // Generate maintenance report from table action
+        function generateVehicleMaintenanceReport(vehicleId) {
+            selectedVehicleId = vehicleId;
+            fetch(`/get_vehicle_by_id?vehicle_id=${vehicleId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.vehicle) {
+                        selectedVehicleInfo = data.vehicle;
+                        generateMaintenanceReport();
+                    } else {
+                        alert('Vehicle not found.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading vehicle for report:', error);
+                    alert('Error loading vehicle details.');
+                });
+        }
+
+        // Logout Modal Functions
+        function logout() {
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            // Implement logout logic here (e.g., clear session, redirect to login)
+            window.location.href = '/logout';
+        }
+    </script>
+</body>
+</html>

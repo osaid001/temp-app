@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Server Error - Pakistan Army{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding: 50px;">
+    <h1 style="font-size: 72px; color: #dc3545; margin-bottom: 20px;">500</h1>
+    <h2 style="color: #666; margin-bottom: 30px;">Internal Server Error</h2>
+    <p style="color: #888; margin-bottom: 30px;">Something went wrong on our end.</p>
+    <a href="{{ url_for('index') }}" style="background: #dc3545; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Return to Home</a>
+</div>
+{% endblock %}
