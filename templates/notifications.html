@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fleet Management - Notifications</title>
+    <title>Notifications</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         body {
@@ -75,7 +75,7 @@
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 30px auto;
             padding: 20px;
             position: relative;
@@ -128,18 +128,59 @@
             box-shadow: 0 6px 12px rgba(0,0,0,0.3);
         }
 
-        .btn-secondary { background: linear-gradient(145deg, #6c757d, #545b62); color: white; }
-        .btn-secondary:hover { background: linear-gradient(145deg, #545b62, #6c757d); }
-        .btn-danger { background: linear-gradient(145deg, #dc3545, #c82333); color: white; }
-        .btn-danger:hover { background: linear-gradient(145deg, #c82333, #dc3545); }
-        .btn-success { background: linear-gradient(145deg, #28a745, #218838); color: white; }
-        .btn-success:hover { background: linear-gradient(145deg, #218838, #28a745); }
-        .btn-info { background: linear-gradient(145deg, #17a2b8, #138496); color: white; }
-        .btn-info:hover { background: linear-gradient(145deg, #138496, #17a2b8); }
-        .btn-warning { background: linear-gradient(145deg, #ffc107, #e0a800); color: #212529; }
-        .btn-warning:hover { background: linear-gradient(145deg, #e0a800, #ffc107); }
-        .btn-sm { padding: 8px 16px; font-size: 12px; }
+        .btn-secondary {
+            background: linear-gradient(145deg, #6c757d, #545b62);
+            color: white;
+        }
 
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, #545b62, #6c757d);
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(145deg, #c82333, #dc3545);
+        }
+
+        .btn-success {
+            background: linear-gradient(145deg, #28a745, #218838);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(145deg, #218838, #28a745);
+        }
+
+        .btn-info {
+            background: linear-gradient(145deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        .btn-info:hover {
+            background: linear-gradient(145deg, #138496, #17a2b8);
+        }
+
+        .btn-warning {
+            background: linear-gradient(145deg, #ffc107, #e0a800);
+            color: #1a472a;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(145deg, #e0a800, #ffc107);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 2px;
+            min-width: 60px;
+        }
+
+        /* Filter and Search Section */
         .filter-section {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -193,6 +234,7 @@
             box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
         }
 
+        /* Notifications Table */
         .table-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 15px;
@@ -202,20 +244,20 @@
             overflow-x: auto;
         }
 
-        .notification-table {
+        .notifications-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
 
-        .notification-table th,
-        .notification-table td {
+        .notifications-table th,
+        .notifications-table td {
             padding: 15px;
             text-align: left;
             border-bottom: 1px solid #ddd;
         }
 
-        .notification-table th {
+        .notifications-table th {
             background: linear-gradient(145deg, #d4af37, #b8941f);
             color: #1a472a;
             font-weight: 700;
@@ -225,38 +267,112 @@
             top: 0;
         }
 
-        .notification-table tr:last-child td {
+        .notifications-table tr:last-child td {
             border-bottom: none;
         }
 
-        .notification-table tr:hover {
+        .notifications-table tr:hover {
             background-color: rgba(212, 175, 55, 0.1);
         }
 
+        /* Status badges */
         .status-badge {
-            padding: 6px 12px;
+            padding: 4px 12px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .status.active { background: #28a745; color: white; }
-        .status.inactive { background: #dc3545; color: white; }
+        .status-unread {
+            background: linear-gradient(145deg, #dc3545, #c82333);
+            color: white;
+        }
 
-        .type-badge {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 12px;
+        .status-read {
+            background: linear-gradient(145deg, #28a745, #218838);
+            color: white;
+        }
+
+        .priority-overdue {
+            background: linear-gradient(145deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .priority-due-soon {
+            background: linear-gradient(145deg, #ffc107, #e0a800);
+            color: #1a472a;
+        }
+
+        .priority-normal {
+            background: linear-gradient(145deg, #17a2b8, #138496);
+            color: white;
+        }
+
+        /* Success and error messages */
+        .error-message, .success-message {
+            display: none;
+            color: #dc3545;
+            margin-bottom: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 10px;
+            background: rgba(220, 53, 69, 0.1);
+            border-left: 4px solid #dc3545;
+            border-radius: 4px;
+        }
+
+        .success-message {
+            color: #28a745;
+            background: rgba(40, 167, 69, 0.1);
+            border-left: 4px solid #28a745;
+        }
+
+        .error-message:not(:empty), .success-message:not(:empty) {
+            display: block;
+        }
+
+        /* No records message */
+        .no-records {
+            text-align: center;
+            padding: 40px;
+            color: #1a472a;
+            font-weight: 500;
+            font-size: 16px;
+            display: none;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+        }
+
+        .pagination button {
+            background: rgba(212, 175, 55, 0.2);
+            border: 2px solid #d4af37;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .pagination button:hover {
+            background: rgba(212, 175, 55, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .pagination button.active {
+            background: linear-gradient(145deg, #d4af37, #b8941f);
+            color: #1a472a;
             font-weight: bold;
-            text-transform: uppercase;
         }
 
-        .type-badge.alert { background: #dc3545; color: white; }
-        .type-badge.warning { background: #ffc107; color: #212529; }
-        .type-badge.info { background: #17a2b8; color: white; }
-        .type-badge.maintenance { background: #28a745; color: white; }
-
+        /* Logout Modal */
         .logout-modal {
             display: none;
             position: fixed;
@@ -286,401 +402,723 @@
             margin-bottom: 20px;
         }
 
-        .modal-buttons {
+        .logout-modal-buttons {
             display: flex;
             gap: 15px;
             justify-content: center;
             margin-top: 25px;
         }
 
-        .modal-btn {
-            padding: 12px 25px;
+        .logout-btn {
+            padding: 10px 25px;
             border: none;
             border-radius: 8px;
             font-size: 14px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
         }
 
-        .modal-btn-cancel {
+        .logout-btn-cancel {
             background: #6c757d;
             color: white;
         }
 
-        .modal-btn-cancel:hover {
+        .logout-btn-cancel:hover {
             background: #545b62;
         }
 
-        .modal-btn-confirm {
+        .logout-btn-confirm {
             background: linear-gradient(145deg, #d4af37, #b8941f);
             color: #1a472a;
         }
 
-        .modal-btn-confirm:hover {
+        .logout-btn-confirm:hover {
             background: linear-gradient(145deg, #b8941f, #d4af37);
         }
 
-        .error-message, .success-message {
-            display: none;
-            margin-bottom: 20px;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 10px;
-            border-radius: 4px;
-        }
-
-        .error-message {
-            color: #dc3545;
-            background: rgba(220, 53, 69, 0.1);
-            border-left: 4px solid #dc3545;
-        }
-
-        .success-message {
-            color: #28a745;
-            background: rgba(40, 167, 69, 0.1);
-            border-left: 4px solid #28a745;
-        }
-
-        .error-message:not(:empty), .success-message:not(:empty) {
-            display: block;
-        }
-
+        /* Loading indicator */
         .loading {
+            display: none;
             text-align: center;
             padding: 20px;
+            font-size: 16px;
             color: #1a472a;
         }
 
+        .loading.show {
+            display: block;
+        }
+
+        /* Responsive adjustments */
         @media (max-width: 768px) {
-            .container { padding: 15px; }
-            .actions-container { flex-direction: column; }
-            .btn { width: 100%; text-align: center; }
-            .filter-form { flex-direction: column; }
-            .form-group { min-width: 100%; }
-            .navbar { padding: 15px 20px; flex-direction: column; gap: 15px; }
-            .navbar h1 { font-size: 24px; }
-            .page-header { flex-direction: column; gap: 15px; text-align: center; }
-            .modal-buttons { flex-direction: column; }
+            .container {
+                padding: 15px;
+            }
+
+            .actions-container {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .filter-form {
+                flex-direction: column;
+            }
+
+            .form-group {
+                min-width: 100%;
+            }
+
+            .navbar {
+                padding: 15px 20px;
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .navbar h1 {
+                font-size: 24px;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 15px;
+                text-align: center;
+            }
+
+            .notifications-table {
+                font-size: 14px;
+            }
+
+            .notifications-table th,
+            .notifications-table td {
+                padding: 10px 8px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar h1 {
+                font-size: 20px;
+            }
+
+            .page-header h2 {
+                font-size: 24px;
+            }
+
+            .notifications-table th,
+            .notifications-table td {
+                padding: 8px 5px;
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
+    <!-- Navigation Bar -->
     <nav class="navbar">
-        <h1>Fleet Management Dashboard</h1>
+        <h1>Notifications</h1>
         <div class="navbar-links">
-            <a href="dashboard" onclick="navigateToDashboard(event)">Dashboard</a>
+            <a href="/dashboard">Dashboard</a>
             <a href="#" onclick="logout()">Logout</a>
         </div>
     </nav>
 
+    <!-- Main Container -->
     <div class="container">
         <div class="page-header">
-            <h2>Notifications Management</h2>
+            <h2>Notification Management</h2>
         </div>
 
+        <!-- Success/Error Messages -->
+        <div id="globalSuccess" class="success-message"></div>
+        <div id="globalError" class="error-message"></div>
+
+        <!-- Action Buttons -->
         <div class="actions-container">
-            <button class="btn btn-info" onclick="refreshNotifications()">Refresh</button>
-            <button class="btn btn-success" onclick="markAllAsRead()">Mark All Read</button>
-            <button class="btn btn-warning" onclick="clearOldNotifications()">Clear Old</button>
-            <button class="btn btn-danger" onclick="clearAllNotifications()">Clear All</button>
+            <button class="btn btn-info" onclick="refreshNotifications()">Refresh Notifications</button>
+            <button class="btn btn-success" onclick="markAllAsRead()">Mark All as Read</button>
+            <button class="btn btn-secondary" onclick="clearAllFromView()">Clear All from View</button>
+            <button class="btn btn-danger" onclick="deleteAllNotifications()">Delete All</button>
         </div>
 
+        <!-- Filter and Search Section -->
         <div class="filter-section">
-            <h3>Filter & Search Notifications</h3>
+            <h3>Filter Notifications</h3>
             <div class="filter-form">
                 <div class="form-group">
-                    <label for="searchVehicleId">Search by Vehicle ID</label>
-                    <input type="text" id="searchVehicleId" placeholder="Enter vehicle ID...">
+                    <label for="filterStatus">Filter by Status</label>
+                    <select id="filterStatus">
+                        <option value="">All Statuses</option>
+                        <option value="unread">Unread</option>
+                        <option value="read">Read</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="filterType">Filter by Type</label>
                     <select id="filterType">
                         <option value="">All Types</option>
-                        <option value="alert">Alert</option>
-                        <option value="warning">Warning</option>
-                        <option value="info">Info</option>
-                        <option value="maintenance">Maintenance</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="due_soon">Due Soon</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="filterStatus">Filter by Status</label>
-                    <select id="filterStatus">
-                        <option value="">All Status</option>
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                    </select>
+                    <label for="searchMessage">Search in Message</label>
+                    <input type="text" id="searchMessage" placeholder="Enter keywords...">
                 </div>
                 <button class="btn" onclick="applyFilters()">Apply Filters</button>
                 <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
             </div>
         </div>
 
-        <div id="errorMessage" class="error-message"></div>
-        <div id="successMessage" class="success-message"></div>
+        <!-- Loading indicator -->
+        <div id="loading" class="loading">Loading notifications...</div>
 
+        <!-- Table Container -->
         <div class="table-container">
-            <div id="loadingIndicator" class="loading" style="display: none;">
-                Loading notifications...
-            </div>
-            <table class="notification-table">
+            <table class="notifications-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Type</th>
-                        <th>Vehicle ID</th>
-                        <th>Message</th>
-                        <th>Timestamp</th>
-                        <th>Status</th>
-                        <th>Actions</th>
+                        <th style="width: 70%;">Notification Message</th>
+                        <th style="width: 30%;">Actions</th>
                     </tr>
                 </thead>
-                <tbody id="notificationTable">
-                    <tr>
-                        <td colspan="7" style="text-align:center;">Loading...</td>
-                    </tr>
+                <tbody id="notificationsTableBody">
+                    <!-- Will be populated by JavaScript -->
                 </tbody>
             </table>
+            <div id="noRecordsMessage" class="no-records">
+                No notifications found.
+            </div>
+            <div class="pagination" id="pagination">
+                <!-- Will be populated by JavaScript -->
+            </div>
         </div>
     </div>
 
+    <!-- Logout Modal -->
     <div id="logoutModal" class="logout-modal">
         <div class="logout-modal-content">
             <h3>Logout Confirmation</h3>
             <p>Are you sure you want to logout?</p>
-            <div class="modal-buttons">
-                <button class="modal-btn modal-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
-                <button class="modal-btn modal-btn-confirm" onclick="confirmLogout()">OK</button>
+            <div class="logout-modal-buttons">
+                <button class="logout-btn logout-btn-cancel" onclick="closeLogoutModal()">Cancel</button>
+                <button class="logout-btn logout-btn-confirm" onclick="confirmLogout()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal for Actions -->
+    <div id="confirmationModal" class="logout-modal">
+        <div class="logout-modal-content">
+            <h3 id="confirmationTitle">Confirm Action</h3>
+            <p id="confirmationMessage">Are you sure you want to proceed?</p>
+            <div class="logout-modal-buttons">
+                <button class="logout-btn logout-btn-cancel" onclick="closeConfirmationModal()">Cancel</button>
+                <button class="logout-btn logout-btn-confirm" id="confirmationOkBtn" onclick="confirmAction()">OK</button>
             </div>
         </div>
     </div>
 
     <script>
         // Global variables
-        let allNotifications = [];
-        let filteredNotifications = [];
+        let currentPage = 1;
+        let allNotifications = []; // Store all notifications for client-side filtering
+        let filteredNotifications = []; // Store filtered results
+        let hiddenNotifications = new Set(); // Track cleared notifications
+        let pendingAction = null; // Store pending action for confirmation modal
 
-        // Initialize page on load
+        // Initialization on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadNotifications();
         });
 
-        // Navigation functions
-        function navigateToDashboard(event) {
-            event.preventDefault();
-            try {
-                const dashboardUrl = './dashboard'; // Adjust path if dashboard.html is in a different directory
-                window.location.href = dashboardUrl;
-            } catch (error) {
-                showError('Failed to navigate to dashboard: ' + error.message);
-                console.error('Navigation error:', error);
-            }
-        }
-
-        // Logout functions
-        function logout() {
-            try {
-                const logoutModal = document.getElementById('logoutModal');
-                if (logoutModal) {
-                    logoutModal.style.display = 'block';
-                } else {
-                    showError('Logout modal not found.');
-                }
-            } catch (error) {
-                showError('Error opening logout modal: ' + error.message);
-            }
-        }
-
-        function closeLogoutModal() {
-            try {
-                const logoutModal = document.getElementById('logoutModal');
-                if (logoutModal) {
-                    logoutModal.style.display = 'none';
-                }
-            } catch (error) {
-                showError('Error closing logout modal: ' + error.message);
-            }
-        }
-
-        function confirmLogout() {
-            try {
-                sessionStorage.clear();
-                localStorage.clear();
-                const logoutUrl = '/login.html'; // Update to your actual logout endpoint or page
-                window.location.href = logoutUrl;
-            } catch (error) {
-                showError('Logout error: ' + error.message);
-                window.location.href = '/login.html'; // Fallback to login page
-            }
-        }
-
-        // Load notifications from backend - preserving your original logic
-        function loadNotifications() {
+        // Load notifications with optional filters
+        function loadNotifications(page = 1) {
+            currentPage = page;
             showLoading(true);
-            fetch('/api/notifications')
-                .then(res => res.json())
+
+            // Fetch notifications from backend
+            fetch('/get_notifications')
+                .then(response => response.json())
                 .then(data => {
-                    allNotifications = data;
-                    displayNotifications(data);
-                    showLoading(false);
+                    if (data.success && data.notifications) {
+                        allNotifications = data.notifications;
+                        applyFilters(); // This will render the notifications
+                    } else {
+                        showError('Failed to load notifications: ' + (data.message || 'Unknown error'));
+                        showNoRecords();
+                    }
                 })
-                .catch(err => {
-                    console.error("Error loading notifications:", err);
-                    showError("Failed to load notifications: " + err.message);
+                .catch(error => {
+                    console.error('Error loading notifications:', error);
+                    showError('Failed to load notifications. Please try again.');
+                    showNoRecords();
+                })
+                .finally(() => {
                     showLoading(false);
                 });
         }
 
-        // Display notifications in table - enhanced version of your original
-        function displayNotifications(notifications) {
-            const tableBody = document.getElementById("notificationTable");
-            tableBody.innerHTML = "";
+        // Apply filters and render notifications
+        function applyFilters() {
+            const statusFilter = document.getElementById('filterStatus').value;
+            const typeFilter = document.getElementById('filterType').value;
+            const searchText = document.getElementById('searchMessage').value.toLowerCase();
 
-            if (notifications.length === 0) {
-                tableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No notifications found</td></tr>';
+            // Filter notifications
+            filteredNotifications = allNotifications.filter(notification => {
+                // Skip hidden notifications
+                if (hiddenNotifications.has(notification.id)) {
+                    return false;
+                }
+
+                // Status filter
+                if (statusFilter && notification.status !== statusFilter) {
+                    return false;
+                }
+
+                // Type filter (based on message content)
+                if (typeFilter === 'overdue' && !notification.message.toLowerCase().includes('overdue')) {
+                    return false;
+                }
+                if (typeFilter === 'due_soon' && (!notification.message.toLowerCase().includes('due soon') && !notification.message.toLowerCase().includes('scheduled this week'))) {
+                    return false;
+                }
+
+                // Search filter
+                if (searchText && !notification.message.toLowerCase().includes(searchText)) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            renderNotifications();
+        }
+
+        // Render notifications in the table
+        function renderNotifications() {
+            const tableBody = document.getElementById('notificationsTableBody');
+            const noRecordsMessage = document.getElementById('noRecordsMessage');
+            const pagination = document.getElementById('pagination');
+
+            // Clear previous data
+            tableBody.innerHTML = '';
+            pagination.innerHTML = '';
+
+            if (filteredNotifications.length === 0) {
+                showNoRecords();
                 return;
             }
 
-            notifications.forEach(n => {
-                const typeClass = getTypeClass(n.type);
-                const statusClass = n.status === 'Active' ? 'active' : 'inactive';
+            noRecordsMessage.style.display = 'none';
 
-                tableBody.innerHTML += `
-                    <tr>
-                        <td>${n.id}</td>
-                        <td><span class="type-badge ${typeClass}">${n.type}</span></td>
-                        <td>${n.vehicle_id}</td>
-                        <td>${n.message}</td>
-                        <td>${formatTimestamp(n.timestamp)}</td>
-                        <td><span class="status-badge status ${statusClass}">${n.status}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-info" onclick="viewNotification(${n.id})">View</button>
-                            <button class="btn btn-sm btn-warning" onclick="markAsRead(${n.id})">Mark Read</button>
-                            <button class="btn btn-sm btn-danger" onclick="deleteNotification(${n.id})">Delete</button>
-                        </td>
-                    </tr>
+            // Pagination
+            const itemsPerPage = 10;
+            const totalPages = Math.ceil(filteredNotifications.length / itemsPerPage);
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentNotifications = filteredNotifications.slice(startIndex, endIndex);
+
+            // Render notifications
+            currentNotifications.forEach(notification => {
+                const row = document.createElement('tr');
+
+                // Add visual indicator for unread notifications
+                const messageClass = notification.status === 'unread' ? 'style="font-weight: bold; color: #dc3545;"' : '';
+
+                row.innerHTML = `
+                    <td ${messageClass}>${notification.message}</td>
+                    <td>
+                        <div style="display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start;">
+                            ${notification.status === 'unread' ?
+                                `<button class="btn btn-success btn-sm" onclick="markAsRead(${notification.id})" title="Mark as Read">Read</button>` :
+                                `<button class="btn btn-success btn-sm" disabled style="opacity: 0.5;" title="Already Read">Read</button>`}
+                            <button class="btn btn-secondary btn-sm" onclick="clearFromView(${notification.id})" title="Clear from View">Clear</button>
+                            <button class="btn btn-danger btn-sm" onclick="showConfirmation('delete', ${notification.id})" title="Delete Permanently">Delete</button>
+                        </div>
+                    </td>
                 `;
+                tableBody.appendChild(row);
             });
-        }
 
-        // Helper functions
-        function getTypeClass(type) {
-            switch(type.toLowerCase()) {
-                case 'alert': return 'alert';
-                case 'warning': return 'warning';
-                case 'info': return 'info';
-                case 'maintenance': return 'maintenance';
-                default: return 'info';
+            // Create pagination
+            if (totalPages > 1) {
+                for (let i = 1; i <= totalPages; i++) {
+                    const button = document.createElement('button');
+                    button.textContent = i;
+                    button.className = currentPage === i ? 'active' : '';
+                    button.onclick = () => {
+                        currentPage = i;
+                        renderNotifications();
+                    };
+                    pagination.appendChild(button);
+                }
             }
         }
 
-        function formatTimestamp(timestamp) {
-            const date = new Date(timestamp);
-            return date.toLocaleString('en-US');
+        // Show no records message
+        function showNoRecords() {
+            const tableBody = document.getElementById('notificationsTableBody');
+            const noRecordsMessage = document.getElementById('noRecordsMessage');
+
+            tableBody.innerHTML = '';
+            noRecordsMessage.style.display = 'block';
         }
 
-        // Filter functions
-        function applyFilters() {
-            showLoading(true);
-            const vehicleId = document.getElementById('searchVehicleId').value.toLowerCase();
-            const type = document.getElementById('filterType').value.toLowerCase();
-            const status = document.getElementById('filterStatus').value;
-
-            filteredNotifications = allNotifications.filter(notification => {
-                const matchesVehicleId = !vehicleId || notification.vehicle_id.toString().toLowerCase().includes(vehicleId);
-                const matchesType = !type || notification.type.toLowerCase() === type;
-                const matchesStatus = !status || notification.status === status;
-
-                return matchesVehicleId && matchesType && matchesStatus;
-            });
-
-            displayNotifications(filteredNotifications);
-            showLoading(false);
-            showSuccess(Filtered ${filteredNotifications.length} notifications);
-        }
-
+        // Reset filters
         function resetFilters() {
-            document.getElementById('searchVehicleId').value = '';
-            document.getElementById('filterType').value = '';
             document.getElementById('filterStatus').value = '';
-            displayNotifications(allNotifications);
-            showSuccess('Filters reset');
+            document.getElementById('filterType').value = '';
+            document.getElementById('searchMessage').value = '';
+            currentPage = 1;
+            applyFilters();
         }
 
-        // Action functions
+        // Refresh notifications - check for new maintenance notifications
         function refreshNotifications() {
-            showSuccess('Refreshing notifications...');
-            loadNotifications();
+            showLoading(true);
+            showSuccess('Checking for new maintenance notifications...');
+
+            fetch('/check_maintenance_notifications', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(`Maintenance check completed. ${data.notifications_created} new notifications created.`);
+                    // Reload all notifications
+                    loadNotifications();
+                } else {
+                    showError('Failed to check maintenance notifications: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing notifications:', error);
+                showError('Failed to refresh notifications. Please try again.');
+            })
+            .finally(() => {
+                showLoading(false);
+            });
         }
 
+        // Mark all notifications as read
         function markAllAsRead() {
-            showSuccess('All notifications marked as read');
-            // Implement backend call to mark all as read
+            if (allNotifications.length === 0) {
+                showError('No notifications to mark as read.');
+                return;
+            }
+
+            showConfirmation('markAllRead');
         }
 
-        function clearOldNotifications() {
-            showSuccess('Old notifications cleared');
-            // Implement backend call to clear old notifications
+        // Clear all notifications from view (hide, don't delete)
+        function clearAllFromView() {
+            if (filteredNotifications.length === 0) {
+                showError('No notifications to clear from view.');
+                return;
+            }
+
+            showConfirmation('clearAll');
         }
 
-        function clearAllNotifications() {
-            if (confirm('Are you sure you want to clear all notifications?')) {
-                showSuccess('All notifications cleared');
-                // Implement backend call to clear all notifications
+        // Delete all notifications from database
+        function deleteAllNotifications() {
+            if (allNotifications.length === 0) {
+                showError('No notifications to delete.');
+                return;
+            }
+
+            showConfirmation('deleteAll');
+        }
+
+        // Show confirmation modal
+        function showConfirmation(action, notificationId = null) {
+            const modal = document.getElementById('confirmationModal');
+            const title = document.getElementById('confirmationTitle');
+            const message = document.getElementById('confirmationMessage');
+
+            pendingAction = { action, notificationId };
+
+            switch(action) {
+                case 'markAllRead':
+                    title.textContent = 'Mark All as Read';
+                    message.textContent = 'Are you sure you want to mark all notifications as read?';
+                    break;
+                case 'clearAll':
+                    title.textContent = 'Clear All from View';
+                    message.textContent = 'Are you sure you want to clear all visible notifications from view? They will reappear when you refresh.';
+                    break;
+                case 'deleteAll':
+                    title.textContent = 'Delete All Notifications';
+                    message.textContent = 'Are you sure you want to permanently delete ALL notifications from the database? This action cannot be undone.';
+                    break;
+                case 'delete':
+                    title.textContent = 'Delete Notification';
+                    message.textContent = 'Are you sure you want to permanently delete this notification? This action cannot be undone.';
+                    break;
+            }
+
+            modal.style.display = 'block';
+        }
+
+        // Close confirmation modal
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+            pendingAction = null;
+        }
+
+        // Confirm action
+        function confirmAction() {
+            if (!pendingAction) return;
+
+            const { action, notificationId } = pendingAction;
+            closeConfirmationModal();
+
+            switch(action) {
+                case 'markAllRead':
+                    executeMarkAllAsRead();
+                    break;
+                case 'clearAll':
+                    executeClearAllFromView();
+                    break;
+                case 'deleteAll':
+                    executeDeleteAllNotifications();
+                    break;
+                case 'delete':
+                    deleteNotification(notificationId);
+                    break;
             }
         }
 
-        function viewNotification(id) {
-            showSuccess(Viewing notification: ${id});
-            // Implement view functionality
+        // Execute mark all as read
+        function executeMarkAllAsRead() {
+            showLoading(true);
+
+            fetch('/mark_all_notifications_read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(`Successfully marked ${data.updated_count} notifications as read.`);
+                    // Update local data
+                    allNotifications.forEach(notification => {
+                        notification.status = 'read';
+                    });
+                    applyFilters();
+                } else {
+                    showError('Failed to mark notifications as read: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error marking all as read:', error);
+                showError('Failed to mark notifications as read. Please try again.');
+            })
+            .finally(() => {
+                showLoading(false);
+            });
         }
 
-        function markAsRead(id) {
-            showSuccess(Notification ${id} marked as read);
-            // Implement backend call to mark as read
+        // Execute clear all from view
+        function executeClearAllFromView() {
+            // Add all filtered notifications to hidden set
+            filteredNotifications.forEach(notification => {
+                hiddenNotifications.add(notification.id);
+            });
+
+            applyFilters();
+            showSuccess('All visible notifications cleared from view.');
         }
 
-        function deleteNotification(id) {
-            if (confirm('Are you sure you want to delete this notification?')) {
-                showSuccess(Notification ${id} deleted);
-                // Implement backend call to delete notification
-                loadNotifications(); // Refresh the list
-            }
+        // Execute delete all notifications
+        function executeDeleteAllNotifications() {
+            showLoading(true);
+
+            fetch('/delete_all_notifications', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(`Successfully deleted ${data.deleted_count} notifications.`);
+                    allNotifications = [];
+                    filteredNotifications = [];
+                    hiddenNotifications.clear();
+                    showNoRecords();
+                } else {
+                    showError('Failed to delete notifications: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting all notifications:', error);
+                showError('Failed to delete notifications. Please try again.');
+            })
+            .finally(() => {
+                showLoading(false);
+            });
         }
 
-        // Utility functions
+        // Mark single notification as read
+        function markAsRead(notificationId) {
+            fetch('/mark_notification_read', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ notification_id: notificationId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update local data
+                    const notification = allNotifications.find(n => n.id === notificationId);
+                    if (notification) {
+                        notification.status = 'read';
+                        applyFilters();
+                        showSuccess('Notification marked as read.');
+                    }
+                } else {
+                    showError('Failed to mark notification as read: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error marking notification as read:', error);
+                showError('Failed to mark notification as read. Please try again.');
+            });
+        }
+
+        // Clear single notification from view
+        function clearFromView(notificationId) {
+            hiddenNotifications.add(notificationId);
+            applyFilters();
+            showSuccess('Notification cleared from view.');
+        }
+
+        // Delete single notification from database
+        function deleteNotification(notificationId) {
+            fetch('/delete_notification', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ notification_id: notificationId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Remove from local data
+                    allNotifications = allNotifications.filter(n => n.id !== notificationId);
+                    hiddenNotifications.delete(notificationId);
+                    applyFilters();
+                    showSuccess('Notification deleted successfully.');
+                } else {
+                    showError('Failed to delete notification: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting notification:', error);
+                showError('Failed to delete notification. Please try again.');
+            });
+        }
+
+        // Show loading indicator
         function showLoading(show) {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            if (loadingIndicator) {
-                loadingIndicator.style.display = show ? 'block' : 'none';
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.classList.add('show');
+            } else {
+                loading.classList.remove('show');
             }
         }
 
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            if (errorDiv) {
-                errorDiv.textContent = message;
-                errorDiv.style.display = 'block';
-                setTimeout(() => {
-                    errorDiv.style.display = 'none';
-                    errorDiv.textContent = '';
-                }, 5000);
-            }
-        }
-
+        // Show success message
         function showSuccess(message) {
-            const successDiv = document.getElementById('successMessage');
-            if (successDiv) {
-                successDiv.textContent = message;
-                successDiv.style.display = 'block';
-                setTimeout(() => {
-                    successDiv.style.display = 'none';
-                    successDiv.textContent = '';
-                }, 5000);
-            }
+            const successElement = document.getElementById('globalSuccess');
+            const errorElement = document.getElementById('globalError');
+
+            errorElement.textContent = '';
+            successElement.textContent = message;
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                successElement.textContent = '';
+            }, 5000);
         }
+
+        // Show error message
+        function showError(message) {
+            const successElement = document.getElementById('globalSuccess');
+            const errorElement = document.getElementById('globalError');
+
+            successElement.textContent = '';
+            errorElement.textContent = message;
+
+            // Auto-hide after 7 seconds
+            setTimeout(() => {
+                errorElement.textContent = '';
+            }, 7000);
+        }
+
+        // Navigation functions
+        function logout() {
+            document.getElementById('logoutModal').style.display = 'block';
+        }
+
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
+
+        function confirmLogout() {
+            // Clear any local session data if needed
+            sessionStorage.clear();
+            localStorage.clear();
+            // Redirect to login page
+            window.location.href = '/logout';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const logoutModal = document.getElementById('logoutModal');
+            const confirmationModal = document.getElementById('confirmationModal');
+
+            if (event.target === logoutModal) {
+                closeLogoutModal();
+            } else if (event.target === confirmationModal) {
+                closeConfirmationModal();
+            }
+        };
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl+R or F5 for refresh (prevent default and use our refresh)
+            if ((e.ctrlKey && e.key === 'r') || e.key === 'F5') {
+                e.preventDefault();
+                refreshNotifications();
+            }
+
+            // Escape to close modals
+            if (e.key === 'Escape') {
+                closeLogoutModal();
+                closeConfirmationModal();
+            }
+        });
+
+        // Auto-refresh notifications every 5 minutes
+        setInterval(() => {
+            console.log('Auto-refreshing notifications...');
+            refreshNotifications();
+        }, 300000); // 5 minutes
+
     </script>
 </body>
 </html>

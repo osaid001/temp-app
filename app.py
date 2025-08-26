@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-import pyodbc
-from datetime import datetime
+import psycopg2
+import os
+from datetime import datetime, timedelta
 import hashlib
 from geopy.distance import geodesic
 from io import StringIO
@@ -10,16 +11,18 @@ from flask import Response
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_change_this_in_production'
 
-
 ############################### connection #################################
 
 def get_db_connection():
-    return pyodbc.connect(
-        'DRIVER={ODBC Driver 17 for SQL Server};'
-        'SERVER=TABLET-5GM9SJA7\\SQLEXPRESS;'
-        'DATABASE=army_db;'
-        'Trusted_Connection=yes;'
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST", "dpg-d2modeur433s73auu6qg-a"),
+        database=os.getenv("DB_NAME", "army_db"),
+        user=os.getenv("DB_USER", "army_db_user"),
+        password=os.getenv("DB_PASSWORD", "oCfPpl0fp9ycRVHx40l71YLKGMsjoZWZ"),
+        port=os.getenv("DB_PORT", "5432"),
+        sslmode=os.getenv("DB_SSLMODE", "require"),
     )
+    return conn
 
 ################################# start ##########################################
 
@@ -49,7 +52,7 @@ def login():
         cursor = conn.cursor()
 
         # Query to check if username and password exist
-        cursor.execute("SELECT id, full_name, username, password_hash FROM admins WHERE username = ?", (username,))
+        cursor.execute("SELECT id, full_name, username, password_hash FROM admins WHERE username = %s", (username,))
         user = cursor.fetchone()
 
         if user:
@@ -91,7 +94,6 @@ def login():
 
     return redirect('/')
 
-
 ################################# dashboard ##################################
 
 @app.route('/dashboard')
@@ -100,6 +102,80 @@ def dashboard():
     if not session.get('logged_in'):
         flash('Please login to access the dashboard.', 'error')
         return redirect('/')
+
+    # Check maintenance notifications when dashboard loads
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # First, delete all notifications with status = 'read'
+        cursor.execute("DELETE FROM notifications WHERE status = 'read'")
+
+        current_date = datetime.now().date()
+
+        # Get all maintenance records with status 'not'
+        cursor.execute("""
+            SELECT mr.id, mr.vehicle_id, mr.type, mr.next_due, mr.next_due_mileage, 
+                   mr.periodicity, v.BA_number, v.total_milage
+            FROM maintenance_records mr
+            JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not'
+        """)
+
+        maintenance_records = cursor.fetchall()
+
+        for record in maintenance_records:
+            record_id, vehicle_id, maintenance_type, next_due, next_due_mileage, periodicity, ba_number, total_mileage = record
+
+            should_notify = False
+            message = ""
+
+            # Check based on periodicity
+            if periodicity in [0, 2]:  # Time-based or both
+                if next_due:
+                    days_diff = (next_due - current_date).days
+                    if days_diff <= 7:
+                        should_notify = True
+                        if days_diff < 0:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is overdue and was scheduled on {next_due.strftime('%Y-%m-%d')}"
+                        else:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is scheduled this week on {next_due.strftime('%Y-%m-%d')}"
+
+            if periodicity in [1, 2]:  # Distance-based or both
+                if next_due_mileage and total_mileage:
+                    mileage_diff = next_due_mileage - total_mileage
+                    if mileage_diff <= 5:
+                        should_notify = True
+                        if mileage_diff < 0:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is overdue and was scheduled at {next_due_mileage} km mileage"
+                        else:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is due soon at {next_due_mileage} km mileage"
+
+            if should_notify:
+                # Check if notification already exists for this type and vehicle
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM notifications 
+                    WHERE type = %s AND vehicle_id = %s
+                """, (maintenance_type, vehicle_id))
+
+                existing_count = cursor.fetchone()[0]
+
+                if existing_count == 0:
+                    # Insert new notification
+                    cursor.execute("""
+                        INSERT INTO notifications (type, vehicle_id, message, timestamp, status)
+                        VALUES (%s, %s, %s, %s, 'unread')
+                    """, (maintenance_type, vehicle_id, message, datetime.now()))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+    except Exception as e:
+        print(f"Error checking maintenance notifications: {e}")
+        # Don't let notification errors break the dashboard
+        pass
 
     # Get user information from session
     user_info = {
@@ -207,6 +283,400 @@ def get_notification_count():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/check_maintenance_notifications')
+def check_maintenance_notifications():
+    """Check for maintenance due soon or overdue and create notifications"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        current_date = datetime.now().date()
+        notifications_created = 0
+
+        # Get all maintenance records with status 'not'
+        cursor.execute("""
+            SELECT mr.id, mr.vehicle_id, mr.type, mr.next_due, mr.next_due_mileage, 
+                   mr.periodicity, v.BA_number, v.total_milage
+            FROM maintenance_records mr
+            JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not'
+        """)
+
+        maintenance_records = cursor.fetchall()
+
+        for record in maintenance_records:
+            record_id, vehicle_id, maintenance_type, next_due, next_due_mileage, periodicity, ba_number, total_mileage = record
+
+            should_notify = False
+            message = ""
+            is_overdue = False
+
+            # Check based on periodicity
+            if periodicity in [0, 2]:  # Time-based or both
+                if next_due:
+                    days_diff = (next_due - current_date).days
+                    if days_diff <= 7:
+                        should_notify = True
+                        if days_diff < 0:
+                            is_overdue = True
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is overdue and was scheduled on {next_due.strftime('%Y-%m-%d')}"
+                        else:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is scheduled this week on {next_due.strftime('%Y-%m-%d')}"
+
+            if periodicity in [1, 2]:  # Distance-based or both
+                if next_due_mileage and total_mileage:
+                    mileage_diff = next_due_mileage - total_mileage
+                    if mileage_diff <= 5:
+                        should_notify = True
+                        if mileage_diff < 0:
+                            is_overdue = True
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is overdue and was scheduled at {next_due_mileage} km mileage"
+                        else:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is due soon at {next_due_mileage} km mileage"
+
+            if should_notify:
+                # Check if notification already exists for this type and vehicle
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM notifications 
+                    WHERE type = %s AND vehicle_id = %s
+                """, (maintenance_type, vehicle_id))
+
+                existing_count = cursor.fetchone()[0]
+
+                if existing_count == 0:
+                    # Insert new notification
+                    cursor.execute("""
+                        INSERT INTO notifications (type, vehicle_id, message, timestamp, status)
+                        VALUES (%s, %s, %s, %s, 'unread')
+                    """, (maintenance_type, vehicle_id, message, datetime.now()))
+
+                    notifications_created += 1
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'notifications_created': notifications_created,
+            'message': f'Maintenance check completed. {notifications_created} new notifications created.'
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+###################################### notifications page ##################################
+
+@app.route('/get_notifications')
+def get_notifications():
+    """Get all notifications from database"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, type, vehicle_id, message, timestamp, status
+            FROM notifications
+            ORDER BY timestamp DESC
+        """)
+
+        notifications = []
+        for row in cursor.fetchall():
+            notifications.append({
+                'id': row[0],
+                'type': row[1],
+                'vehicle_id': row[2],
+                'message': row[3],
+                'timestamp': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else None,
+                'status': row[5]
+            })
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'notifications': notifications
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/mark_all_notifications_read', methods=['POST'])
+def mark_all_notifications_read():
+    """Mark all notifications as read"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get count of unread notifications
+        cursor.execute("SELECT COUNT(*) FROM notifications WHERE status = 'unread'")
+        unread_count = cursor.fetchone()[0]
+
+        # Mark all as read
+        cursor.execute("UPDATE notifications SET status = 'read'")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'updated_count': unread_count,
+            'message': f'Successfully marked {unread_count} notifications as read.'
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/mark_notification_read', methods=['POST'])
+def mark_notification_read():
+    """Mark a single notification as read"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        data = request.get_json()
+        notification_id = data.get('notification_id')
+
+        if not notification_id:
+            return jsonify({'error': 'Notification ID is required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            UPDATE notifications 
+            SET status = 'read' 
+            WHERE id = %s
+        """, (notification_id,))
+
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Notification not found'}), 404
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Notification marked as read successfully.'
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/delete_all_notifications', methods=['POST'])
+def delete_all_notifications():
+    """Delete all notifications from database"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get count of notifications to delete
+        cursor.execute("SELECT COUNT(*) FROM notifications")
+        total_count = cursor.fetchone()[0]
+
+        # Delete all notifications
+        cursor.execute("DELETE FROM notifications")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'deleted_count': total_count,
+            'message': f'Successfully deleted {total_count} notifications.'
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/delete_notification', methods=['POST'])
+def delete_notification():
+    """Delete a single notification from database"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+
+    try:
+        data = request.get_json()
+        notification_id = data.get('notification_id')
+
+        if not notification_id:
+            return jsonify({'error': 'Notification ID is required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("DELETE FROM notifications WHERE id = %s", (notification_id,))
+
+        if cursor.rowcount == 0:
+            cursor.close()
+            conn.close()
+            return jsonify({'error': 'Notification not found'}), 404
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Notification deleted successfully.'
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/check_maintenance_notifications', methods=['POST'])
+def check_maintenance_notifications_post():
+    """POST version of check maintenance notifications for the refresh button"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        current_date = datetime.now().date()
+        notifications_created = 0
+
+        # Get all maintenance records with status 'not'
+        cursor.execute("""
+            SELECT mr.id, mr.vehicle_id, mr.type, mr.next_due, mr.next_due_mileage, 
+                   mr.periodicity, v.BA_number, v.total_milage
+            FROM maintenance_records mr
+            JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not'
+        """)
+
+        maintenance_records = cursor.fetchall()
+
+        for record in maintenance_records:
+            record_id, vehicle_id, maintenance_type, next_due, next_due_mileage, periodicity, ba_number, total_mileage = record
+
+            should_notify = False
+            message = ""
+            is_overdue = False
+
+            # Check based on periodicity
+            if periodicity in [0, 2]:  # Time-based or both
+                if next_due:
+                    days_diff = (next_due - current_date).days
+                    if days_diff <= 7:
+                        should_notify = True
+                        if days_diff < 0:
+                            is_overdue = True
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is overdue and was scheduled on {next_due.strftime('%Y-%m-%d')}"
+                        else:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is scheduled this week on {next_due.strftime('%Y-%m-%d')}"
+
+            if periodicity in [1, 2]:  # Distance-based or both
+                if next_due_mileage and total_mileage:
+                    mileage_diff = next_due_mileage - total_mileage
+                    if mileage_diff <= 5:
+                        should_notify = True
+                        if mileage_diff < 0:
+                            is_overdue = True
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is overdue and was scheduled at {next_due_mileage} km mileage"
+                        else:
+                            message = f"{maintenance_type} maintenance of vehicle {ba_number} is due soon at {next_due_mileage} km mileage"
+
+            if should_notify:
+                # Check if notification already exists for this type and vehicle
+                cursor.execute("""
+                    SELECT COUNT(*) 
+                    FROM notifications 
+                    WHERE type = %s AND vehicle_id = %s
+                """, (maintenance_type, vehicle_id))
+
+                existing_count = cursor.fetchone()[0]
+
+                if existing_count == 0:
+                    # Insert new notification
+                    cursor.execute("""
+                        INSERT INTO notifications (type, vehicle_id, message, timestamp, status)
+                        VALUES (%s, %s, %s, %s, 'unread')
+                    """, (maintenance_type, vehicle_id, message, datetime.now()))
+
+                    notifications_created += 1
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'notifications_created': notifications_created,
+            'message': f'Maintenance check completed. {notifications_created} new notifications created.'
+        })
+
+    except Exception as e:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        return jsonify({'error': str(e)}), 500
+
 ######################################## driver page route #############################
 
 @app.route('/add_driver', methods=['POST'])
@@ -230,14 +700,14 @@ def add_driver():
         cursor = conn.cursor()
 
         # Check if driver ID already exists
-        cursor.execute("SELECT id FROM drivers WHERE id = ?", (driver_id,))
+        cursor.execute("SELECT id FROM drivers WHERE id = %s", (driver_id,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Driver ID already exists'})
 
         # Check if army number already exists
-        cursor.execute("SELECT army_number FROM drivers WHERE army_number = ?", (army_number,))
+        cursor.execute("SELECT army_number FROM drivers WHERE army_number = %s", (army_number,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
@@ -246,7 +716,7 @@ def add_driver():
         # Insert new driver
         cursor.execute("""
             INSERT INTO drivers (id, name, rank, army_number, unit)
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s)
         """, (driver_id, name, rank, army_number, unit))
 
         conn.commit()
@@ -277,11 +747,11 @@ def get_drivers():
         params = []
 
         if search_name:
-            where_conditions.append("name LIKE ?")
+            where_conditions.append("name LIKE %s")
             params.append(f"%{search_name}%")
 
         if unit_filter:
-            where_conditions.append("unit = ?")
+            where_conditions.append("unit = %s")
             params.append(unit_filter)
 
         where_clause = ""
@@ -300,7 +770,7 @@ def get_drivers():
             SELECT id, name, rank, army_number, unit
             FROM drivers {where_clause}
             ORDER BY name
-            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            OFFSET %s ROWS FETCH NEXT %s ROWS ONLY
         """
         cursor.execute(query, params + [offset, per_page])
 
@@ -361,7 +831,7 @@ def get_driver_by_id():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE id = ?", (driver_id,))
+        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE id = %s", (driver_id,))
         row = cursor.fetchone()
 
         if row:
@@ -397,7 +867,7 @@ def get_driver_by_army_number():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE army_number = ?", (army_number,))
+        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE army_number = %s", (army_number,))
         row = cursor.fetchone()
 
         if row:
@@ -442,14 +912,14 @@ def update_driver():
 
         # Check if new driver ID already exists (if different from current)
         if driver_id != new_driver_id:
-            cursor.execute("SELECT id FROM drivers WHERE id = ?", (new_driver_id,))
+            cursor.execute("SELECT id FROM drivers WHERE id = %s", (new_driver_id,))
             if cursor.fetchone():
                 cursor.close()
                 conn.close()
                 return jsonify({'success': False, 'message': 'New Driver ID already exists'})
 
         # Check if army number already exists (if different from current driver's army number)
-        cursor.execute("SELECT army_number, id FROM drivers WHERE army_number = ?", (army_number,))
+        cursor.execute("SELECT army_number, id FROM drivers WHERE army_number = %s", (army_number,))
         existing = cursor.fetchone()
         if existing and existing[1] != driver_id:
             cursor.close()
@@ -459,14 +929,14 @@ def update_driver():
         # Update driver
         cursor.execute("""
             UPDATE drivers 
-            SET id = ?, name = ?, rank = ?, army_number = ?, unit = ?
-            WHERE id = ?
+            SET id = %s, name = %s, rank = %s, army_number = %s, unit = %s
+            WHERE id = %s
         """, (new_driver_id, name, rank, army_number, unit, driver_id))
 
         # If driver ID changed, update related tables
         if driver_id != new_driver_id:
-            cursor.execute("UPDATE GPSData SET driver_id = ? WHERE driver_id = ?", (new_driver_id, driver_id))
-            cursor.execute("UPDATE events SET driver_id = ? WHERE driver_id = ?", (new_driver_id, driver_id))
+            cursor.execute("UPDATE GPSData SET driver_id = %s WHERE driver_id = %s", (new_driver_id, driver_id))
+            cursor.execute("UPDATE events SET driver_id = %s WHERE driver_id = %s", (new_driver_id, driver_id))
 
         conn.commit()
         cursor.close()
@@ -493,18 +963,18 @@ def remove_driver():
         cursor = conn.cursor()
 
         # Check if driver exists
-        cursor.execute("SELECT id FROM drivers WHERE id = ?", (driver_id,))
+        cursor.execute("SELECT id FROM drivers WHERE id = %s", (driver_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Driver not found'})
 
         # Delete related data from other tables
-        cursor.execute("DELETE FROM events WHERE driver_id = ?", (driver_id,))
-        cursor.execute("DELETE FROM GPSData WHERE driver_id = ?", (driver_id,))
+        cursor.execute("DELETE FROM events WHERE driver_id = %s", (driver_id,))
+        cursor.execute("DELETE FROM GPSData WHERE driver_id = %s", (driver_id,))
 
         # Delete driver
-        cursor.execute("DELETE FROM drivers WHERE id = ?", (driver_id,))
+        cursor.execute("DELETE FROM drivers WHERE id = %s", (driver_id,))
 
         conn.commit()
         cursor.close()
@@ -533,7 +1003,7 @@ def generate_driver_report():
         cursor = conn.cursor()
 
         # Get driver information
-        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE id = ?", (driver_id,))
+        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE id = %s", (driver_id,))
         driver_row = cursor.fetchone()
 
         if not driver_row:
@@ -554,7 +1024,7 @@ def generate_driver_report():
             SELECT DISTINCT v.id, v.make, v.model, v.BA_number
             FROM vehicles v
             INNER JOIN GPSData g ON v.id = g.vehicle_id
-            WHERE g.driver_id = ? AND CAST(g.timestamp AS DATE) BETWEEN ? AND ?
+            WHERE g.driver_id = %s AND CAST(g.timestamp AS DATE) BETWEEN %s AND %s
         """, (driver_id, start_date, end_date))
 
         vehicles = []
@@ -569,8 +1039,8 @@ def generate_driver_report():
             # Calculate distance for this vehicle
             cursor.execute("""
                 SELECT lat, lon FROM GPSData 
-                WHERE vehicle_id = ? AND driver_id = ? 
-                AND CAST(timestamp AS DATE) BETWEEN ? AND ?
+                WHERE vehicle_id = %s AND driver_id = %s 
+                AND CAST(timestamp AS DATE) BETWEEN %s AND %s
                 ORDER BY timestamp
             """, (vehicle_id, driver_id, start_date, end_date))
 
@@ -588,8 +1058,8 @@ def generate_driver_report():
             cursor.execute("""
                 SELECT event_type, COUNT(*) as count
                 FROM events 
-                WHERE vehicle_id = ? AND driver_id = ? 
-                AND CAST(timestamp AS DATE) BETWEEN ? AND ?
+                WHERE vehicle_id = %s AND driver_id = %s 
+                AND CAST(timestamp AS DATE) BETWEEN %s AND %s
                 AND event_type IN ('harsh_brake', 'overspeeding', 'harsh_acceleration')
                 GROUP BY event_type
             """, (vehicle_id, driver_id, start_date, end_date))
@@ -647,7 +1117,7 @@ def export_events_csv():
         cursor = conn.cursor()
 
         # Get driver information
-        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE id = ?", (driver_id,))
+        cursor.execute("SELECT id, name, rank, army_number, unit FROM drivers WHERE id = %s", (driver_id,))
         driver_row = cursor.fetchone()
         if not driver_row:
             cursor.close()
@@ -679,13 +1149,13 @@ def export_events_csv():
                 e.event_type
             FROM events e
             INNER JOIN vehicles v ON e.vehicle_id = v.id
-            WHERE e.driver_id = ? 
-            AND CAST(e.timestamp AS DATE) BETWEEN ? AND ?
+            WHERE e.driver_id = %s 
+            AND CAST(e.timestamp AS DATE) BETWEEN %s AND %s
         """
         params = [driver_id, start_date, end_date]
 
         if event_type != 'all':
-            query += " AND e.event_type = ?"
+            query += " AND e.event_type = %s"
             params.append(event_type)
 
         query += " ORDER BY e.timestamp"
@@ -787,16 +1257,16 @@ def get_vehicles():
         params = []
 
         if search_ba_number:
-            where_conditions.append("BA_number LIKE ?")
+            where_conditions.append("BA_number LIKE %s")
             params.append(f"%{search_ba_number}%")
         if make:
-            where_conditions.append("make = ?")
+            where_conditions.append("make = %s")
             params.append(make)
         if type_filter:
-            where_conditions.append("type = ?")
+            where_conditions.append("type = %s")
             params.append(type_filter)
         if unit:
-            where_conditions.append("unit = ?")
+            where_conditions.append("unit = %s")
             params.append(unit)
 
         where_clause = " WHERE " + " AND ".join(where_conditions) if where_conditions else ""
@@ -811,7 +1281,7 @@ def get_vehicles():
             SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
             FROM vehicles{where_clause}
             ORDER BY id
-            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            OFFSET %s ROWS FETCH NEXT %s ROWS ONLY
         """
         cursor.execute(query, params + [offset, per_page])
 
@@ -901,14 +1371,14 @@ def add_vehicle():
         cursor = conn.cursor()
 
         # Check if vehicle ID already exists
-        cursor.execute("SELECT id FROM vehicles WHERE id = ?", (vehicle_id,))
+        cursor.execute("SELECT id FROM vehicles WHERE id = %s", (vehicle_id,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Vehicle ID already exists'})
 
         # Check if BA number already exists
-        cursor.execute("SELECT BA_number FROM vehicles WHERE BA_number = ?", (ba_number,))
+        cursor.execute("SELECT BA_number FROM vehicles WHERE BA_number = %s", (ba_number,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
@@ -917,7 +1387,7 @@ def add_vehicle():
         # Insert vehicle
         cursor.execute("""
             INSERT INTO vehicles (id, BA_number, make, type, model, total_milage, unit, maintaining_workshop)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (vehicle_id, ba_number, make, vehicle_type, model, total_milage, unit, maintaining_workshop))
 
         # Insert maintenance records (removed completion_date and completion_mileage)
@@ -946,7 +1416,7 @@ def add_vehicle():
             cursor.execute("""
                 INSERT INTO maintenance_records 
                 (vehicle_id, type, last_done, last_done_mileage, next_due, next_due_mileage, periodicity, time_interval_months, distance_interval_km, status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """, (vehicle_id, maintenance_type, last_done, last_done_mileage, next_due, next_due_mileage, periodicity,
                   time_interval, distance_interval, 'not'))
 
@@ -975,7 +1445,7 @@ def get_vehicle_by_id():
         # Get vehicle details
         cursor.execute("""
             SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
-            FROM vehicles WHERE id = ?
+            FROM vehicles WHERE id = %s
         """, (vehicle_id,))
 
         vehicle_row = cursor.fetchone()
@@ -1000,10 +1470,10 @@ def get_vehicle_by_id():
             SELECT m1.type, m1.last_done, m1.last_done_mileage, m1.next_due, m1.next_due_mileage, m1.periodicity, 
                    m1.time_interval_months, m1.distance_interval_km, m1.status, m1.completion_date, m1.completion_mileage
             FROM maintenance_records m1
-            WHERE m1.vehicle_id = ? AND m1.id IN (
+            WHERE m1.vehicle_id = %s AND m1.id IN (
                 SELECT MAX(m2.id) 
                 FROM maintenance_records m2 
-                WHERE m2.vehicle_id = ? AND m2.type = m1.type 
+                WHERE m2.vehicle_id = %s AND m2.type = m1.type 
             )
         """, (vehicle_id, vehicle_id))
 
@@ -1051,7 +1521,7 @@ def get_vehicle_by_ba_number():
         # Get vehicle details
         cursor.execute("""
             SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
-            FROM vehicles WHERE BA_number = ?
+            FROM vehicles WHERE BA_number = %s
         """, (ba_number,))
 
         vehicle_row = cursor.fetchone()
@@ -1076,10 +1546,10 @@ def get_vehicle_by_ba_number():
             SELECT m1.type, m1.last_done, m1.last_done_mileage, m1.next_due, m1.next_due_mileage, m1.periodicity, 
                    m1.time_interval_months, m1.distance_interval_km, m1.status, m1.completion_date, m1.completion_mileage
             FROM maintenance_records m1
-            WHERE m1.vehicle_id = ? AND m1.id IN (
+            WHERE m1.vehicle_id = %s AND m1.id IN (
                 SELECT MAX(m2.id) 
                 FROM maintenance_records m2 
-                WHERE m2.vehicle_id = ? AND m2.type = m1.type 
+                WHERE m2.vehicle_id = %s AND m2.type = m1.type 
             )
         """, (vehicle['id'], vehicle['id']))
 
@@ -1138,14 +1608,14 @@ def update_vehicle():
 
         # Check if the new vehicle ID already exists (if different from original)
         if original_vehicle_id != new_vehicle_id:
-            cursor.execute("SELECT id FROM vehicles WHERE id = ?", (new_vehicle_id,))
+            cursor.execute("SELECT id FROM vehicles WHERE id = %s", (new_vehicle_id,))
             if cursor.fetchone():
                 cursor.close()
                 conn.close()
                 return jsonify({'success': False, 'message': 'New Vehicle ID already exists'})
 
         # Check if BA number exists for other vehicles
-        cursor.execute("SELECT id FROM vehicles WHERE BA_number = ? AND id != ?", (ba_number, original_vehicle_id))
+        cursor.execute("SELECT id FROM vehicles WHERE BA_number = %s AND id != %s", (ba_number, original_vehicle_id))
         if cursor.fetchone():
             cursor.close()
             conn.close()
@@ -1155,25 +1625,25 @@ def update_vehicle():
             # Insert new vehicle record with updated data
             cursor.execute("""
                 INSERT INTO vehicles (id, BA_number, make, type, model, total_milage, unit, maintaining_workshop)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """, (new_vehicle_id, ba_number, make, vehicle_type, model, total_milage, unit, maintaining_workshop))
 
             # Update related tables to point to new vehicle_id
-            cursor.execute("UPDATE GPSData SET vehicle_id = ? WHERE vehicle_id = ?", (new_vehicle_id, original_vehicle_id))
-            cursor.execute("UPDATE notifications SET vehicle_id = ? WHERE vehicle_id = ?", (new_vehicle_id, original_vehicle_id))
-            cursor.execute("UPDATE events SET vehicle_id = ? WHERE vehicle_id = ?", (new_vehicle_id, original_vehicle_id))
-            cursor.execute("UPDATE settings SET vehicle_id = ? WHERE vehicle_id = ?", (new_vehicle_id, original_vehicle_id))
-            cursor.execute("UPDATE maintenance_records SET vehicle_id = ? WHERE vehicle_id = ?", (new_vehicle_id, original_vehicle_id))
+            cursor.execute("UPDATE GPSData SET vehicle_id = %s WHERE vehicle_id = %s", (new_vehicle_id, original_vehicle_id))
+            cursor.execute("UPDATE notifications SET vehicle_id = %s WHERE vehicle_id = %s", (new_vehicle_id, original_vehicle_id))
+            cursor.execute("UPDATE events SET vehicle_id = %s WHERE vehicle_id = %s", (new_vehicle_id, original_vehicle_id))
+            cursor.execute("UPDATE settings SET vehicle_id = %s WHERE vehicle_id = %s", (new_vehicle_id, original_vehicle_id))
+            cursor.execute("UPDATE maintenance_records SET vehicle_id = %s WHERE vehicle_id = %s", (new_vehicle_id, original_vehicle_id))
 
             # Delete the old vehicle record
-            cursor.execute("DELETE FROM vehicles WHERE id = ?", (original_vehicle_id,))
+            cursor.execute("DELETE FROM vehicles WHERE id = %s", (original_vehicle_id,))
 
         else:
             # Same ID, just update the vehicle record
             cursor.execute("""
                 UPDATE vehicles 
-                SET BA_number = ?, make = ?, type = ?, model = ?, total_milage = ?, unit = ?, maintaining_workshop = ?
-                WHERE id = ?
+                SET BA_number = %s, make = %s, type = %s, model = %s, total_milage = %s, unit = %s, maintaining_workshop = %s
+                WHERE id = %s
             """, (ba_number, make, vehicle_type, model, total_milage, unit, maintaining_workshop, original_vehicle_id))
 
         # For maintenance updates, only update the latest record for each type or create new ones if changes made
@@ -1202,7 +1672,7 @@ def update_vehicle():
             # Get the latest maintenance record for this type
             cursor.execute("""
                 SELECT id, last_done FROM maintenance_records 
-                WHERE vehicle_id = ? AND type = ? 
+                WHERE vehicle_id = %s AND type = %s 
                 ORDER BY id DESC
             """, (new_vehicle_id, maintenance_type))
 
@@ -1217,16 +1687,16 @@ def update_vehicle():
                     cursor.execute("""
                         INSERT INTO maintenance_records 
                         (vehicle_id, type, last_done, last_done_mileage, next_due, next_due_mileage, periodicity, time_interval_months, distance_interval_km, status)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (new_vehicle_id, maintenance_type, last_done, last_done_mileage, next_due, next_due_mileage, periodicity,
                           time_interval, distance_interval, 'not'))
                 else:
                     # Update the existing latest record if only other details changed
                     cursor.execute("""
-                        UPDATE maintenance_records 
-                        SET last_done_mileage = ?, next_due = ?, next_due_mileage = ?, periodicity = ?, time_interval_months = ?, 
-                            distance_interval_km = ?
-                        WHERE id = ?
+                        UPDATE maintenance_records  
+                        SET last_done_mileage = %s, next_due = %s, next_due_mileage = %s, periodicity = %s, time_interval_months = %s, 
+                            distance_interval_km = %s
+                        WHERE id = %s
                     """, (last_done_mileage, next_due, next_due_mileage, periodicity, time_interval, distance_interval,
                           latest_record[0]))
             else:
@@ -1234,7 +1704,7 @@ def update_vehicle():
                 cursor.execute("""
                     INSERT INTO maintenance_records 
                     (vehicle_id, type, last_done, last_done_mileage, next_due, next_due_mileage, periodicity, time_interval_months, distance_interval_km, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, (new_vehicle_id, maintenance_type, last_done, last_done_mileage, next_due, next_due_mileage, periodicity,
                       time_interval, distance_interval, 'not'))
 
@@ -1263,19 +1733,19 @@ def remove_vehicle():
         cursor = conn.cursor()
 
         # Check if vehicle exists
-        cursor.execute("SELECT id FROM vehicles WHERE id = ?", (vehicle_id,))
+        cursor.execute("SELECT id FROM vehicles WHERE id = %s", (vehicle_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Vehicle not found'})
 
         # Delete related records in correct order
-        cursor.execute("DELETE FROM settings WHERE vehicle_id = ?", (vehicle_id,))
-        cursor.execute("DELETE FROM events WHERE vehicle_id = ?", (vehicle_id,))
-        cursor.execute("DELETE FROM notifications WHERE vehicle_id = ?", (vehicle_id,))
-        cursor.execute("DELETE FROM maintenance_records WHERE vehicle_id = ?", (vehicle_id,))
-        cursor.execute("DELETE FROM GPSData WHERE vehicle_id = ?", (vehicle_id,))
-        cursor.execute("DELETE FROM vehicles WHERE id = ?", (vehicle_id,))
+        cursor.execute("DELETE FROM settings WHERE vehicle_id = %s", (vehicle_id,))
+        cursor.execute("DELETE FROM events WHERE vehicle_id = %s", (vehicle_id,))
+        cursor.execute("DELETE FROM notifications WHERE vehicle_id = %s", (vehicle_id,))
+        cursor.execute("DELETE FROM maintenance_records WHERE vehicle_id = %s", (vehicle_id,))
+        cursor.execute("DELETE FROM GPSData WHERE vehicle_id = %s", (vehicle_id,))
+        cursor.execute("DELETE FROM vehicles WHERE id = %s", (vehicle_id,))
 
         conn.commit()
         cursor.close()
@@ -1285,7 +1755,6 @@ def remove_vehicle():
 
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
-
 
 @app.route('/generate_vehicle_maintenance_report')
 def generate_vehicle_maintenance_report():
@@ -1304,7 +1773,7 @@ def generate_vehicle_maintenance_report():
         # Get vehicle details
         cursor.execute("""
             SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
-            FROM vehicles WHERE id = ?
+            FROM vehicles WHERE id = %s
         """, (vehicle_id,))
 
         vehicle_row = cursor.fetchone()
@@ -1329,10 +1798,10 @@ def generate_vehicle_maintenance_report():
             SELECT m1.type, m1.last_done, m1.last_done_mileage, m1.next_due, m1.next_due_mileage, m1.periodicity, 
                    m1.time_interval_months, m1.distance_interval_km, m1.status
             FROM maintenance_records m1
-            WHERE m1.vehicle_id = ? AND m1.id IN (
+            WHERE m1.vehicle_id = %s AND m1.id IN (
                 SELECT MAX(m2.id) 
                 FROM maintenance_records m2 
-                WHERE m2.vehicle_id = ? AND m2.type = m1.type 
+                WHERE m2.vehicle_id = %s AND m2.type = m1.type 
             )
             ORDER BY m1.type
         """, (vehicle_id, vehicle_id))
@@ -1357,7 +1826,7 @@ def generate_vehicle_maintenance_report():
 
             # Calculate status and progress based on periodicity
             if row[8] == 'done':
-                record['status'] = 'Done'
+                record['status'] = 'done'
                 record['progress_percentage'] = 100
             else:
                 # Initialize variables for calculation
@@ -1421,7 +1890,6 @@ def generate_vehicle_maintenance_report():
         print(f"Error in maintenance report: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-
 @app.route('/set_speed_limit', methods=['POST'])
 def set_speed_limit():
     if not session.get('logged_in'):
@@ -1442,7 +1910,7 @@ def set_speed_limit():
 
         # Check if entry exists for this vehicle and road_type
         cursor.execute("""
-            SELECT id FROM settings WHERE vehicle_id = ? AND road_type = ?
+            SELECT id FROM settings WHERE vehicle_id = %s AND road_type = %s
         """, (vehicle_id, road_type))
 
         existing = cursor.fetchone()
@@ -1450,15 +1918,15 @@ def set_speed_limit():
         if existing:
             # Update existing record
             cursor.execute("""
-                UPDATE settings SET speed_limit = ?
-                WHERE vehicle_id = ? AND road_type = ?
+                UPDATE settings SET speed_limit = %s
+                WHERE vehicle_id = %s AND road_type = %s
             """, (speed_limit, vehicle_id, road_type))
             message = f'Speed limit updated to {speed_limit} km/h for {road_type}'
         else:
             # Insert new record
             cursor.execute("""
                 INSERT INTO settings (vehicle_id, speed_limit, road_type)
-                VALUES (?, ?, ?)
+                VALUES (%s, %s, %s)
             """, (vehicle_id, speed_limit, road_type))
             message = f'Speed limit set to {speed_limit} km/h for {road_type}'
 
@@ -1493,7 +1961,7 @@ def change_admin_password():
         cursor = conn.cursor()
 
         # Check if admin exists
-        cursor.execute("SELECT id FROM Admins WHERE id = ?", (admin_id,))
+        cursor.execute("SELECT id FROM Admins WHERE id = %s", (admin_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
@@ -1505,8 +1973,8 @@ def change_admin_password():
         # Update password
         cursor.execute("""
             UPDATE Admins 
-            SET password_hash = ?
-            WHERE id = ?
+            SET password_hash = %s
+            WHERE id = %s
         """, (password_hash, admin_id))
 
         conn.commit()
@@ -1536,7 +2004,7 @@ def get_admins():
         params = []
 
         if search_name:
-            where_clause = "WHERE full_name LIKE ?"
+            where_clause = "WHERE full_name LIKE %s"
             params.append(f"%{search_name}%")
 
         # Get total count
@@ -1551,7 +2019,7 @@ def get_admins():
             SELECT id, full_name, Username 
             FROM Admins {where_clause}
             ORDER BY id
-            OFFSET ? ROWS FETCH NEXT ? ROWS ONLY
+            OFFSET %s ROWS FETCH NEXT %s ROWS ONLY
         """
         cursor.execute(data_query, params + [offset, per_page])
 
@@ -1599,7 +2067,7 @@ def add_admin():
         cursor = conn.cursor()
 
         # Check if username already exists
-        cursor.execute("SELECT Username FROM Admins WHERE Username = ?", (username,))
+        cursor.execute("SELECT Username FROM Admins WHERE Username = %s", (username,))
         if cursor.fetchone():
             cursor.close()
             conn.close()
@@ -1611,7 +2079,7 @@ def add_admin():
         # Insert new admin
         cursor.execute("""
             INSERT INTO Admins (full_name, Username, password_hash)
-            VALUES (?, ?, ?)
+            VALUES (%s, %s, %s)
         """, (full_name, username, password_hash))
 
         conn.commit()
@@ -1637,7 +2105,7 @@ def get_admin_by_id():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, full_name, Username FROM Admins WHERE id = ?", (admin_id,))
+        cursor.execute("SELECT id, full_name, Username FROM Admins WHERE id = %s", (admin_id,))
         row = cursor.fetchone()
 
         cursor.close()
@@ -1670,7 +2138,7 @@ def get_admin_by_username():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, full_name, Username FROM Admins WHERE Username = ?", (username,))
+        cursor.execute("SELECT id, full_name, Username FROM Admins WHERE Username = %s", (username,))
         row = cursor.fetchone()
 
         cursor.close()
@@ -1708,14 +2176,14 @@ def update_admin():
         cursor = conn.cursor()
 
         # Check if admin exists
-        cursor.execute("SELECT id FROM Admins WHERE id = ?", (admin_id,))
+        cursor.execute("SELECT id FROM Admins WHERE id = %s", (admin_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
             return jsonify({'success': False, 'message': 'Admin not found'})
 
         # Check if username is taken by another admin
-        cursor.execute("SELECT id FROM Admins WHERE Username = ? AND id != ?", (username, admin_id))
+        cursor.execute("SELECT id FROM Admins WHERE Username = %s AND id != %s", (username, admin_id))
         if cursor.fetchone():
             cursor.close()
             conn.close()
@@ -1724,8 +2192,8 @@ def update_admin():
         # Update admin (without password)
         cursor.execute("""
             UPDATE Admins 
-            SET full_name = ?, Username = ?
-            WHERE id = ?
+            SET full_name = %s, Username = %s
+            WHERE id = %s
         """, (full_name, username, admin_id))
 
         conn.commit()
@@ -1753,7 +2221,7 @@ def remove_admin():
         cursor = conn.cursor()
 
         # Check if admin exists
-        cursor.execute("SELECT id FROM Admins WHERE id = ?", (admin_id,))
+        cursor.execute("SELECT id FROM Admins WHERE id = %s", (admin_id,))
         if not cursor.fetchone():
             cursor.close()
             conn.close()
@@ -1776,7 +2244,7 @@ def remove_admin():
             return jsonify({'success': False, 'message': 'Cannot delete your own account'})
 
         # Delete admin
-        cursor.execute("DELETE FROM Admins WHERE id = ?", (admin_id,))
+        cursor.execute("DELETE FROM Admins WHERE id = %s", (admin_id,))
 
         conn.commit()
         cursor.close()
@@ -1827,7 +2295,6 @@ def get_vehicles_for_live():
         if conn:
             conn.close()
 
-
 @app.route('/api/vehicle-by-ba/<ba_number>')
 def get_vehicle_by_ba(ba_number):
     """Get vehicle ID by BA number"""
@@ -1841,7 +2308,7 @@ def get_vehicle_by_ba(ba_number):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, BA_number FROM vehicles WHERE BA_number = ?", (ba_number,))
+        cursor.execute("SELECT id, BA_number FROM vehicles WHERE BA_number = %s", (ba_number,))
         vehicle = cursor.fetchone()
 
         if vehicle:
@@ -1865,7 +2332,6 @@ def get_vehicle_by_ba(ba_number):
         if conn:
             conn.close()
 
-
 @app.route('/api/vehicle-details/<vehicle_id>')
 def get_vehicle_details(vehicle_id):
     """Get detailed vehicle information"""
@@ -1882,7 +2348,7 @@ def get_vehicle_details(vehicle_id):
         cursor.execute("""
             SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
             FROM vehicles 
-            WHERE id = ?
+            WHERE id = %s
         """, (vehicle_id,))
 
         vehicle = cursor.fetchone()
@@ -1914,7 +2380,6 @@ def get_vehicle_details(vehicle_id):
         if conn:
             conn.close()
 
-
 @app.route('/api/live-gps-data/<vehicle_id>')
 def get_live_gps_data(vehicle_id):
     """Get live GPS data for a vehicle from a specific time onwards - OPTIMIZED"""
@@ -1940,9 +2405,9 @@ def get_live_gps_data(vehicle_id):
         cursor.execute("""
             SELECT TOP 1000 g.id, g.vehicle_id, g.driver_id, g.timestamp, g.lat, g.lon, g.speed,
                    d.name as driver_name, d.rank as driver_rank, d.army_number as driver_army_number, d.unit as driver_unit
-            FROM GPSData g WITH (INDEX(IX_GPSData_Vehicle_Timestamp))
+            FROM GPSData_live g WITH (INDEX(IX_GPSData_live_Vehicle_Timestamp))
             LEFT JOIN drivers d ON g.driver_id = d.id
-            WHERE g.vehicle_id = ? AND g.timestamp > ?
+            WHERE g.vehicle_id = %s AND g.timestamp > %s
             ORDER BY g.timestamp ASC
         """, (vehicle_id, since_datetime))
 
@@ -1992,7 +2457,6 @@ def get_live_gps_data(vehicle_id):
         if conn:
             conn.close()
 
-
 @app.route('/api/live-vehicles')
 def get_live_vehicles():
     """Get all vehicles that have transmitted GPS data in the last 30 seconds"""
@@ -2014,9 +2478,9 @@ def get_live_vehicles():
             SELECT DISTINCT g.vehicle_id, v.BA_number, 
                    MAX(g.timestamp) as last_update,
                    COUNT(*) as point_count
-            FROM GPSData g WITH (INDEX(IX_GPSData_Timestamp))
+            FROM GPSData_live g WITH (INDEX(IX_GPSData_live_Timestamp))
             JOIN vehicles v ON g.vehicle_id = v.id
-            WHERE g.timestamp >= ?
+            WHERE g.timestamp >= %s
             GROUP BY g.vehicle_id, v.BA_number
             ORDER BY last_update DESC
         """, (cutoff_time,))
@@ -2051,7 +2515,6 @@ def get_live_vehicles():
         if conn:
             conn.close()
 
-
 @app.route('/api/all-live-gps-data')
 def get_all_live_gps_data():
     """Get live GPS data for all vehicles from a specific time onwards - OPTIMIZED"""
@@ -2078,9 +2541,9 @@ def get_all_live_gps_data():
             SELECT TOP 5000 g.vehicle_id, g.timestamp, g.lat, g.lon, g.speed,
                    d.name as driver_name, d.rank as driver_rank, 
                    d.army_number as driver_army_number, d.unit as driver_unit
-            FROM GPSData g WITH (INDEX(IX_GPSData_Timestamp))
+            FROM GPSData_live g WITH (INDEX(IX_GPSData_live_Timestamp))
             LEFT JOIN drivers d ON g.driver_id = d.id
-            WHERE g.timestamp > ? 
+            WHERE g.timestamp > %s 
             AND g.lat IS NOT NULL AND g.lon IS NOT NULL 
             AND g.lat != 0 AND g.lon != 0
             ORDER BY g.vehicle_id, g.timestamp ASC
@@ -2127,7 +2590,6 @@ def get_all_live_gps_data():
         if conn:
             conn.close()
 
-
 @app.route('/api/latest-position/<vehicle_id>')
 def get_latest_position(vehicle_id):
     """Get the latest GPS position for a vehicle - OPTIMIZED"""
@@ -2144,9 +2606,9 @@ def get_latest_position(vehicle_id):
         cursor.execute("""
             SELECT TOP 1 g.timestamp, g.lat, g.lon, g.speed,
                    d.name as driver_name, d.rank as driver_rank, d.army_number as driver_army_number
-            FROM GPSData g WITH (INDEX(IX_GPSData_Vehicle_Timestamp))
+            FROM GPSData_live g WITH (INDEX(IX_GPSData_live_Vehicle_Timestamp))
             LEFT JOIN drivers d ON g.driver_id = d.id
-            WHERE g.vehicle_id = ?
+            WHERE g.vehicle_id = %s
             ORDER BY g.timestamp DESC
         """, (vehicle_id,))
 
@@ -2185,7 +2647,6 @@ def get_latest_position(vehicle_id):
         if conn:
             conn.close()
 
-
 @app.route('/api/recent-gps-batch/<vehicle_id>')
 def get_recent_gps_batch(vehicle_id):
     """Get recent GPS data in batches for better performance"""
@@ -2210,9 +2671,9 @@ def get_recent_gps_batch(vehicle_id):
             SELECT TOP {max_points} g.timestamp, g.lat, g.lon, g.speed,
                    d.name as driver_name, d.rank as driver_rank, 
                    d.army_number as driver_army_number, d.unit as driver_unit
-            FROM GPSData g WITH (INDEX(IX_GPSData_Vehicle_Timestamp))
+            FROM GPSData_live g WITH (INDEX(IX_GPSData_live_Vehicle_Timestamp))
             LEFT JOIN drivers d ON g.driver_id = d.id
-            WHERE g.vehicle_id = ? AND g.timestamp >= ?
+            WHERE g.vehicle_id = %s AND g.timestamp >= %s
             AND g.lat IS NOT NULL AND g.lon IS NOT NULL
             ORDER BY g.timestamp ASC
         """, (vehicle_id, cutoff_time))
@@ -2252,7 +2713,6 @@ def get_recent_gps_batch(vehicle_id):
         if conn:
             conn.close()
 
-
 @app.route('/api/vehicle-status/<vehicle_id>')
 def get_vehicle_status(vehicle_id):
     """Get real-time status of a specific vehicle"""
@@ -2270,10 +2730,10 @@ def get_vehicle_status(vehicle_id):
         cursor.execute("""
             SELECT TOP 1 g.timestamp, g.lat, g.lon, g.speed, v.BA_number,
                    d.name as driver_name
-            FROM GPSData g WITH (INDEX(IX_GPSData_Vehicle_Timestamp))
+            FROM GPSData_live g WITH (INDEX(IX_GPSData_live_Vehicle_Timestamp))
             JOIN vehicles v ON g.vehicle_id = v.id
             LEFT JOIN drivers d ON g.driver_id = d.id
-            WHERE g.vehicle_id = ?
+            WHERE g.vehicle_id = %s
             ORDER BY g.timestamp DESC
         """, (vehicle_id,))
 
@@ -2335,7 +2795,6 @@ def get_vehicle_status(vehicle_id):
         if conn:
             conn.close()
 
-
 @app.route('/api/speed-limit/<vehicle_id>')
 def get_speed_limit(vehicle_id):
     """Get speed limit settings for a vehicle"""
@@ -2352,7 +2811,7 @@ def get_speed_limit(vehicle_id):
         cursor.execute("""
             SELECT speed_limit, road_type
             FROM settings
-            WHERE vehicle_id = ?
+            WHERE vehicle_id = %s
         """, (vehicle_id,))
 
         settings = cursor.fetchone()
@@ -2380,8 +2839,7 @@ def get_speed_limit(vehicle_id):
         if conn:
             conn.close()
 
-
-################################# Performance Monitoring Endpoints ##################################
+###!!!!!!!!!!!!!!!!!!!!! Performance Monitoring Endpoints !!!!!!!!!!!!!!!!!!!############
 
 @app.route('/api/system-health')
 def get_system_health():
@@ -2399,10 +2857,10 @@ def get_system_health():
         # Get database statistics
         cursor.execute("""
             SELECT 
-                (SELECT COUNT(*) FROM GPSData WHERE timestamp >= DATEADD(minute, -5, GETDATE())) as recent_gps_points,
-                (SELECT COUNT(DISTINCT vehicle_id) FROM GPSData WHERE timestamp >= DATEADD(minute, -1, GETDATE())) as active_vehicles,
+                (SELECT COUNT(*) FROM GPSData_live WHERE timestamp >= DATEADD(minute, -5, GETDATE())) as recent_gps_points,
+                (SELECT COUNT(DISTINCT vehicle_id) FROM GPSData_live WHERE timestamp >= DATEADD(minute, -1, GETDATE())) as active_vehicles,
                 (SELECT COUNT(*) FROM vehicles) as total_vehicles,
-                (SELECT TOP 1 timestamp FROM GPSData ORDER BY timestamp DESC) as latest_gps_timestamp
+                (SELECT TOP 1 timestamp FROM GPSData_live ORDER BY timestamp DESC) as latest_gps_timestamp
         """)
 
         stats = cursor.fetchone()
@@ -2447,8 +2905,7 @@ def get_system_health():
         if conn:
             conn.close()
 
-
-################################# Additional Utility Functions ##################################
+#####!!!!!!!!!!!!!!!!!!!!!! Additional Utility Functions !!!!!!!!!!!!!!!!!!!!!!##########
 
 def detect_events_from_gps_data(gps_points, vehicle_id, speed_limit=60):
     """
@@ -2527,7 +2984,6 @@ def detect_events_from_gps_data(gps_points, vehicle_id, speed_limit=60):
 
     return events_detected
 
-
 @app.route('/api/process-events', methods=['POST'])
 def process_events():
     """
@@ -2569,7 +3025,7 @@ def process_events():
                 try:
                     cursor.execute("""
                         INSERT INTO events (vehicle_id, driver_id, timestamp, lat, lon, event_type)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                     """, (
                         event['vehicle_id'],
                         event['driver_id'],
@@ -2607,8 +3063,7 @@ def process_events():
         print(f"Error processing events: {e}")
         return jsonify({'success': False, 'message': 'Failed to process events'})
 
-
-################################# Database Maintenance Functions ##################################
+#########!!!!!!!!!!!!!!!!!!! Database Maintenance Functions !!!!!!!!!!!!!!!!!!!!!!#########
 
 @app.route('/api/cleanup-old-data', methods=['POST'])
 def cleanup_old_data():
@@ -2630,14 +3085,14 @@ def cleanup_old_data():
         cursor = conn.cursor()
 
         # Count records to be deleted
-        cursor.execute("SELECT COUNT(*) FROM GPSData WHERE timestamp < ?", (cutoff_date,))
+        cursor.execute("SELECT COUNT(*) FROM GPSData_live WHERE timestamp < %s", (cutoff_date,))
         records_to_delete = cursor.fetchone()[0]
 
         # Delete old GPS data
-        cursor.execute("DELETE FROM GPSData WHERE timestamp < ?", (cutoff_date,))
+        cursor.execute("DELETE FROM GPSData_live WHERE timestamp < %s", (cutoff_date,))
 
         # Delete old events
-        cursor.execute("DELETE FROM events WHERE timestamp < ?", (cutoff_date,))
+        cursor.execute("DELETE FROM events WHERE timestamp < %s", (cutoff_date,))
 
         conn.commit()
 
@@ -2692,7 +3147,7 @@ def get_route_data_for_route():
         cursor.execute("""
             SELECT lat, lon, speed, timestamp, driver_id
             FROM GPSData 
-            WHERE vehicle_id = ? AND timestamp BETWEEN ? AND ?
+            WHERE vehicle_id = %s AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp
         """, (vehicle_id, start_dt, end_dt))
 
@@ -2702,7 +3157,7 @@ def get_route_data_for_route():
         cursor.execute("""
             SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
             FROM vehicles 
-            WHERE id = ?
+            WHERE id = %s
         """, (vehicle_id,))
 
         vehicle_info = cursor.fetchone()
@@ -2713,7 +3168,7 @@ def get_route_data_for_route():
 
             driver_info = []
             if driver_ids:
-                placeholders = ','.join(['?' for _ in driver_ids])
+                placeholders = ','.join(['%s' for _ in driver_ids])
                 cursor.execute(f"""
                     SELECT id, name, rank, army_number, unit
                     FROM drivers 
@@ -2775,7 +3230,6 @@ def get_route_data_for_route():
         if conn:
             conn.close()
 
-
 @app.route('/api/events')
 def get_events_for_route():
     """Get events (harsh braking, acceleration, overspeeding) for specified vehicle and time period"""
@@ -2812,7 +3266,7 @@ def get_events_for_route():
         cursor.execute("""
             SELECT lat, lon, timestamp, driver_id, event_type
             FROM events 
-            WHERE vehicle_id = ? AND event_type = ? AND timestamp BETWEEN ? AND ?
+            WHERE vehicle_id = %s AND event_type = %s AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp
         """, (vehicle_id, event_type, start_dt, end_dt))
 
@@ -2842,7 +3296,6 @@ def get_events_for_route():
             cursor.close()
         if conn:
             conn.close()
-
 
 @app.route('/api/vehicles-for-route')
 def get_vehicles_for_route():
@@ -2882,7 +3335,6 @@ def get_vehicles_for_route():
         if conn:
             conn.close()
 
-
 @app.route('/api/vehicle-by-ba-for-route/<ba_number>')
 def get_vehicle_by_ba_for_route(ba_number):
     """Get vehicle ID by BA number for route tracking"""
@@ -2896,7 +3348,7 @@ def get_vehicle_by_ba_for_route(ba_number):
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute("SELECT id, BA_number FROM vehicles WHERE BA_number = ?", (ba_number,))
+        cursor.execute("SELECT id, BA_number FROM vehicles WHERE BA_number = %s", (ba_number,))
         vehicle = cursor.fetchone()
 
         if vehicle:
@@ -2920,7 +3372,6 @@ def get_vehicle_by_ba_for_route(ba_number):
         if conn:
             conn.close()
 
-
 @app.route('/route-tracking')
 def route_tracking_page():
     """Render the route tracking page"""
@@ -2928,7 +3379,6 @@ def route_tracking_page():
         return redirect(url_for('index'))
 
     return render_template('route_tracking.html')  # You'll need to create this template file
-
 
 @app.route('/api/driver-details-for-route/<driver_id>')
 def get_driver_details_for_route(driver_id):
@@ -2946,7 +3396,7 @@ def get_driver_details_for_route(driver_id):
         cursor.execute("""
             SELECT id, name, rank, army_number, unit
             FROM drivers 
-            WHERE id = ?
+            WHERE id = %s
         """, (driver_id,))
 
         driver = cursor.fetchone()
@@ -2974,7 +3424,6 @@ def get_driver_details_for_route(driver_id):
             cursor.close()
         if conn:
             conn.close()
-
 
 @app.route('/api/route-statistics-for-route')
 def get_route_statistics_for_route():
@@ -3007,7 +3456,7 @@ def get_route_statistics_for_route():
         cursor.execute("""
             SELECT lat, lon, speed, timestamp, driver_id
             FROM GPSData 
-            WHERE vehicle_id = ? AND timestamp BETWEEN ? AND ?
+            WHERE vehicle_id = %s AND timestamp BETWEEN %s AND %s
             ORDER BY timestamp
         """, (vehicle_id, start_dt, end_dt))
 
@@ -3060,6 +3509,803 @@ def get_route_statistics_for_route():
             cursor.close()
         if conn:
             conn.close()
+
+################################# maintenance page ##################################
+
+@app.route('/get_maintenance_stats')
+def get_maintenance_stats():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        current_date = datetime.now().date()
+        week_later = current_date + timedelta(days=7)
+        month_later = current_date + timedelta(days=30)
+
+        # Get overdue maintenance
+        cursor.execute("""
+            SELECT COUNT(*) FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not' AND (
+                (mr.next_due IS NOT NULL AND mr.next_due < %s) OR
+                (mr.next_due_mileage IS NOT NULL AND mr.next_due_mileage <= v.total_milage)
+            )
+        """, (current_date,))
+        overdue = cursor.fetchone()[0]
+
+        # Get due this week
+        cursor.execute("""
+            SELECT COUNT(*) FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not' AND (
+                (mr.next_due IS NOT NULL AND mr.next_due BETWEEN %s AND %s) OR
+                (mr.next_due_mileage IS NOT NULL AND mr.next_due_mileage BETWEEN v.total_milage AND v.total_milage + 500)
+            )
+        """, (current_date, week_later))
+        this_week = cursor.fetchone()[0]
+
+        # Get due this month
+        cursor.execute("""
+            SELECT COUNT(*) FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not' AND (
+                (mr.next_due IS NOT NULL AND mr.next_due BETWEEN %s AND %s) OR
+                (mr.next_due_mileage IS NOT NULL AND mr.next_due_mileage BETWEEN v.total_milage + 500 AND v.total_milage + 2000)
+            )
+        """, (week_later, month_later))
+        this_month = cursor.fetchone()[0]
+
+        # Get on track
+        cursor.execute("""
+            SELECT COUNT(*) FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE mr.status = 'not' AND (
+                (mr.next_due IS NOT NULL AND mr.next_due > %s) OR
+                (mr.next_due_mileage IS NOT NULL AND mr.next_due_mileage > v.total_milage + 2000)
+            )
+        """, (month_later,))
+        on_track = cursor.fetchone()[0]
+
+        return jsonify({
+            'overdue': overdue,
+            'this_week': this_week,
+            'this_month': this_month,
+            'on_track': on_track
+        })
+
+    except Exception as e:
+        print(f"Error getting maintenance stats: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_maintenance_records')
+def get_maintenance_records():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    page = int(request.args.get('page', 1))
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    maintenance_type = request.args.get('maintenance_type', '')
+    status_filter = request.args.get('status', '')
+    vehicle_make = request.args.get('vehicle_make', '')
+    vehicle_type = request.args.get('vehicle_type', '')
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        current_date = datetime.now().date()
+        week_later = current_date + timedelta(days=7)
+        month_later = current_date + timedelta(days=30)
+
+        # Build WHERE clause
+        where_conditions = ["mr.status = 'not'"]
+        where_params = []
+
+        if maintenance_type:
+            where_conditions.append("mr.type = %s")
+            where_params.append(maintenance_type)
+
+        if vehicle_make:
+            where_conditions.append("v.make = %s")
+            where_params.append(vehicle_make)
+
+        if vehicle_type:
+            where_conditions.append("v.type = %s")
+            where_params.append(vehicle_type)
+
+        where_clause = " AND ".join(where_conditions)
+
+        # Get total count
+        count_query = f"""
+            SELECT COUNT(*) FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE {where_clause}
+        """
+        cursor.execute(count_query, where_params)
+        total_records = cursor.fetchone()[0]
+        total_pages = (total_records + per_page - 1) // per_page
+
+        # Get records with status calculation - separate queries to avoid parameter conflicts
+        base_query = f"""
+            SELECT mr.vehicle_id, v.BA_number, v.make, v.type, mr.type as maintenance_type,
+                   mr.last_done, mr.next_due, mr.next_due_mileage, mr.periodicity,
+                   v.total_milage
+            FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE {where_clause}
+            ORDER BY mr.next_due, mr.next_due_mileage
+            OFFSET %s ROWS FETCH NEXT %s ROWS ONLY
+        """
+
+        # Execute with proper parameters
+        query_params = where_params + [offset, per_page]
+        cursor.execute(base_query, query_params)
+
+        records = []
+        for row in cursor.fetchall():
+            # Calculate status in Python to avoid SQL parameter issues
+            status_category = 'on_track'
+            status_text = 'On Track'
+
+            next_due = row[6]  # mr.next_due
+            next_due_mileage = row[7]  # mr.next_due_mileage
+            current_mileage = row[9] or 0  # v.total_milage
+
+            # Check if overdue
+            if ((next_due and next_due < current_date) or
+                    (next_due_mileage and next_due_mileage <= current_mileage)):
+                status_category = 'overdue'
+                status_text = 'Overdue'
+            # Check if due soon (within a week)
+            elif ((next_due and current_date <= next_due <= week_later) or
+                  (next_due_mileage and current_mileage <= next_due_mileage <= current_mileage + 500)):
+                status_category = 'due_soon'
+                status_text = 'Due Soon'
+            # Check if scheduled (within a month)
+            elif ((next_due and week_later < next_due <= month_later) or
+                  (next_due_mileage and current_mileage + 500 < next_due_mileage <= current_mileage + 2000)):
+                status_category = 'scheduled'
+                status_text = 'Scheduled'
+
+            # Apply status filter if specified
+            if status_filter and status_category != status_filter:
+                continue
+
+            records.append({
+                'vehicle_id': row[0],
+                'ba_number': row[1],
+                'make': row[2],
+                'vehicle_type': row[3],
+                'maintenance_type': row[4],
+                'last_done': row[5].strftime('%Y-%m-%d') if row[5] else None,
+                'next_due': row[6].strftime('%Y-%m-%d') if row[6] else None,
+                'status': status_category,
+                'status_text': status_text,
+                'periodicity': row[8]
+            })
+
+        return jsonify({
+            'records': records,
+            'total_records': total_records,
+            'total_pages': total_pages,
+            'current_page': page
+        })
+
+    except Exception as e:
+        print(f"Error getting maintenance records: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_vehicles_list')
+def get_vehicles_list():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id, BA_number, make, model FROM vehicles ORDER BY BA_number")
+        vehicles = []
+        for row in cursor.fetchall():
+            vehicles.append({
+                'id': row[0],
+                'ba_number': row[1],
+                'make': row[2],
+                'model': row[3]
+            })
+
+        return jsonify({'vehicles': vehicles})
+
+    except Exception as e:
+        print(f"Error getting vehicles list: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_maintenance_filters')
+def get_maintenance_filters():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get unique makes
+        cursor.execute("SELECT DISTINCT make FROM vehicles ORDER BY make")
+        makes = [row[0] for row in cursor.fetchall()]
+
+        # Get unique vehicle types
+        cursor.execute("SELECT DISTINCT type FROM vehicles ORDER BY type")
+        vehicle_types = [row[0] for row in cursor.fetchall()]
+
+        return jsonify({
+            'makes': makes,
+            'vehicle_types': vehicle_types
+        })
+
+    except Exception as e:
+        print(f"Error getting filter options: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_vehicle_groups')
+def get_vehicle_groups():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT make, type, model, COUNT(*) as count
+            FROM vehicles
+            GROUP BY make, type, model
+            ORDER BY make, type, model
+        """)
+
+        groups = []
+        for row in cursor.fetchall():
+            groups.append({
+                'make': row[0],
+                'type': row[1],
+                'model': row[2],
+                'count': row[3]
+            })
+
+        return jsonify({'groups': groups})
+
+    except Exception as e:
+        print(f"Error getting vehicle groups: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_vehicle_by_id_for_maintenance')
+def get_vehicle_by_id_for_maintenance():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    vehicle_id = request.args.get('vehicle_id')
+    if not vehicle_id:
+        return jsonify({'error': 'Vehicle ID required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, BA_number, make, type, model, total_milage, unit, maintaining_workshop
+            FROM vehicles WHERE id = %s
+        """, (vehicle_id,))
+
+        row = cursor.fetchone()
+        if row:
+            vehicle = {
+                'id': row[0],
+                'ba_number': row[1],
+                'make': row[2],
+                'type': row[3],
+                'model': row[4],
+                'total_milage': row[5],
+                'unit': row[6],
+                'maintaining_workshop': row[7]
+            }
+            return jsonify({'vehicle': vehicle})
+        else:
+            return jsonify({'error': 'Vehicle not found'}), 404
+
+    except Exception as e:
+        print(f"Error getting vehicle by ID: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_maintenance_criteria')
+def get_maintenance_criteria():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    vehicle_id = request.args.get('vehicle_id')
+    maintenance_type = request.args.get('maintenance_type')
+
+    if not vehicle_id or not maintenance_type:
+        return jsonify({'error': 'Vehicle ID and maintenance type required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT periodicity, time_interval_months, distance_interval_km
+            FROM maintenance_records 
+            WHERE vehicle_id = %s AND type = %s AND status = 'not'
+        """, (vehicle_id, maintenance_type))
+
+        row = cursor.fetchone()
+        if row:
+            criteria = {
+                'periodicity': row[0],
+                'time_interval_months': row[1],
+                'distance_interval_km': row[2]
+            }
+            return jsonify({'success': True, 'criteria': criteria})
+        else:
+            return jsonify({'success': False, 'message': 'No maintenance record found'}), 404
+
+    except Exception as e:
+        print(f"Error getting maintenance criteria: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/get_group_maintenance_criteria')
+def get_group_maintenance_criteria():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    make = request.args.get('make')
+    vehicle_type = request.args.get('type')
+    model = request.args.get('model')
+    maintenance_type = request.args.get('maintenance_type')
+
+    if not all([make, vehicle_type, model, maintenance_type]):
+        return jsonify({'error': 'All parameters required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT TOP 1 mr.periodicity, mr.time_interval_months, mr.distance_interval_km
+            FROM maintenance_records mr
+            INNER JOIN vehicles v ON mr.vehicle_id = v.id
+            WHERE v.make = %s AND v.type = %s AND v.model = %s 
+            AND mr.type = %s AND mr.status = 'not'
+        """, (make, vehicle_type, model, maintenance_type))
+
+        row = cursor.fetchone()
+        if row:
+            criteria = {
+                'periodicity': row[0],
+                'time_interval_months': row[1],
+                'distance_interval_km': row[2]
+            }
+            return jsonify({'success': True, 'criteria': criteria})
+        else:
+            return jsonify({'success': False, 'message': 'No maintenance record found for this group'}), 404
+
+    except Exception as e:
+        print(f"Error getting group maintenance criteria: {e}")
+        return jsonify({'error': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/update_maintenance_record', methods=['POST'])
+def update_maintenance_record():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    vehicle_id = data.get('vehicle_id')
+    maintenance_type = data.get('maintenance_type')
+    completion_date = data.get('completion_date')
+    completion_mileage = data.get('completion_mileage')
+
+    if not all([vehicle_id, maintenance_type, completion_date, completion_mileage]):
+        return jsonify({'success': False, 'message': 'All fields are required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Find the existing 'not' record
+        cursor.execute("""
+            SELECT id, periodicity, time_interval_months, distance_interval_km
+            FROM maintenance_records 
+            WHERE vehicle_id = %s AND type = %s AND status = 'not'
+        """, (vehicle_id, maintenance_type))
+
+        existing_record = cursor.fetchone()
+        if not existing_record:
+            return jsonify({'success': False, 'message': 'No pending maintenance record found'}), 404
+
+        record_id, periodicity, time_interval_months, distance_interval_km = existing_record
+
+        # Update the existing record to 'done'
+        cursor.execute("""
+            UPDATE maintenance_records 
+            SET status = 'done', completion_date = %s, completion_mileage = %s
+            WHERE id = %s
+        """, (completion_date, completion_mileage, record_id))
+
+        # Calculate next due date and mileage
+        completion_date_obj = datetime.strptime(completion_date, '%Y-%m-%d').date()
+        next_due = None
+        next_due_mileage = None
+
+        if periodicity in [0, 2] and time_interval_months:  # Time-based or both
+            next_due = completion_date_obj + timedelta(days=30 * time_interval_months)
+
+        if periodicity in [1, 2] and distance_interval_km:  # Distance-based or both
+            next_due_mileage = completion_mileage + distance_interval_km
+
+        # Create new 'not' record
+        cursor.execute("""
+            INSERT INTO maintenance_records 
+            (vehicle_id, type, last_done, last_done_mileage, next_due, next_due_mileage, 
+             periodicity, time_interval_months, distance_interval_km, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'not')
+        """, (vehicle_id, maintenance_type, completion_date, completion_mileage,
+              next_due, next_due_mileage, periodicity, time_interval_months, distance_interval_km))
+
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Maintenance record updated successfully'})
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error updating maintenance record: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/export_previous_records', methods=['POST'])
+def export_previous_records():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    vehicle_id = data.get('vehicle_id')
+    maintenance_types = data.get('maintenance_types', [])
+
+    if not vehicle_id or not maintenance_types:
+        return jsonify({'error': 'Vehicle ID and maintenance types required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get vehicle details
+        cursor.execute("""
+            SELECT BA_number, make, type, model, total_milage, unit, maintaining_workshop
+            FROM vehicles WHERE id = %s
+        """, (vehicle_id,))
+
+        vehicle = cursor.fetchone()
+        if not vehicle:
+            return jsonify({'error': 'Vehicle not found'}), 404
+
+        # Get maintenance records
+        placeholders = ','.join(['%s' for _ in maintenance_types])
+        query = f"""
+            SELECT type, last_done, last_done_mileage, completion_date, completion_mileage,
+                   periodicity, time_interval_months, distance_interval_km
+            FROM maintenance_records 
+            WHERE vehicle_id = %s AND type IN ({placeholders}) AND status = 'done'
+            ORDER BY completion_date DESC
+        """
+
+        cursor.execute(query, [vehicle_id] + maintenance_types)
+        records = cursor.fetchall()
+
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow([
+            'Vehicle ID', 'BA Number', 'Make', 'Type', 'Model', 'Total Mileage', 'Unit', 'Workshop',
+            'Maintenance Type', 'Last Done Date', 'Last Done Mileage', 'Completion Date',
+            'Completion Mileage', 'Periodicity', 'Time Interval (Months)', 'Distance Interval (KM)'
+        ])
+
+        # Write data
+        for record in records:
+            periodicity_text = {0: 'Time Based', 1: 'Distance Based', 2: 'Both'}.get(record[5], 'Unknown')
+            writer.writerow([
+                vehicle_id, vehicle[0], vehicle[1], vehicle[2], vehicle[3], vehicle[4],
+                vehicle[5], vehicle[6], record[0], record[1], record[2], record[3],
+                record[4], periodicity_text, record[6], record[7]
+            ])
+
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=maintenance_previous_records_{vehicle[0]}.csv'}
+        )
+
+    except Exception as e:
+        print(f"Error exporting previous records: {e}")
+        return jsonify({'error': 'Export failed'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/export_current_status', methods=['POST'])
+def export_current_status():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    vehicle_id = data.get('vehicle_id')
+    maintenance_types = data.get('maintenance_types', [])
+
+    if not vehicle_id or not maintenance_types:
+        return jsonify({'error': 'Vehicle ID and maintenance types required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get vehicle details
+        cursor.execute("""
+            SELECT BA_number, make, type, model, total_milage, unit, maintaining_workshop
+            FROM vehicles WHERE id = %s
+        """, (vehicle_id,))
+
+        vehicle = cursor.fetchone()
+        if not vehicle:
+            return jsonify({'error': 'Vehicle not found'}), 404
+
+        # Get maintenance records
+        placeholders = ','.join(['%s' for _ in maintenance_types])
+        query = f"""
+            SELECT type, last_done, last_done_mileage, next_due, next_due_mileage,
+                   periodicity, time_interval_months, distance_interval_km
+            FROM maintenance_records 
+            WHERE vehicle_id = %s AND type IN ({placeholders}) AND status = 'not'
+            ORDER BY next_due, next_due_mileage
+        """
+
+        cursor.execute(query, [vehicle_id] + maintenance_types)
+        records = cursor.fetchall()
+
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow([
+            'Vehicle ID', 'BA Number', 'Make', 'Type', 'Model', 'Total Mileage', 'Unit', 'Workshop',
+            'Maintenance Type', 'Last Done Date', 'Last Done Mileage', 'Next Due Date',
+            'Next Due Mileage', 'Periodicity', 'Time Interval (Months)', 'Distance Interval (KM)'
+        ])
+
+        # Write data
+        for record in records:
+            periodicity_text = {0: 'Time Based', 1: 'Distance Based', 2: 'Both'}.get(record[5], 'Unknown')
+            writer.writerow([
+                vehicle_id, vehicle[0], vehicle[1], vehicle[2], vehicle[3], vehicle[4],
+                vehicle[5], vehicle[6], record[0], record[1], record[2], record[3],
+                record[4], periodicity_text, record[6], record[7]
+            ])
+
+        output.seek(0)
+        return Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': f'attachment; filename=maintenance_current_status_{vehicle[0]}.csv'}
+        )
+
+    except Exception as e:
+        print(f"Error exporting current status: {e}")
+        return jsonify({'error': 'Export failed'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/update_single_maintenance_criteria', methods=['POST'])
+def update_single_maintenance_criteria():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    vehicle_id = data.get('vehicle_id')
+    maintenance_type = data.get('maintenance_type')
+    time_interval_months = data.get('time_interval_months')
+    distance_interval_km = data.get('distance_interval_km')
+
+    if not vehicle_id or not maintenance_type:
+        return jsonify({'success': False, 'message': 'Vehicle ID and maintenance type required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update the maintenance record
+        update_fields = []
+        params = []
+
+        if time_interval_months is not None:
+            update_fields.append("time_interval_months = %s")
+            params.append(time_interval_months)
+
+        if distance_interval_km is not None:
+            update_fields.append("distance_interval_km = %s")
+            params.append(distance_interval_km)
+
+        if not update_fields:
+            return jsonify({'success': False, 'message': 'No criteria provided'}), 400
+
+        params.extend([vehicle_id, maintenance_type])
+
+        query = f"""
+            UPDATE maintenance_records 
+            SET {', '.join(update_fields)}
+            WHERE vehicle_id = %s AND type = %s AND status = 'not'
+        """
+
+        cursor.execute(query, params)
+
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'No maintenance record found to update'}), 404
+
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Maintenance criteria updated successfully'})
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error updating single maintenance criteria: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+@app.route('/update_group_maintenance_criteria', methods=['POST'])
+def update_group_maintenance_criteria():
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    make = data.get('make')
+    vehicle_type = data.get('type')
+    model = data.get('model')
+    maintenance_type = data.get('maintenance_type')
+    time_interval_months = data.get('time_interval_months')
+    distance_interval_km = data.get('distance_interval_km')
+
+    if not all([make, vehicle_type, model, maintenance_type]):
+        return jsonify({'success': False, 'message': 'All vehicle group parameters and maintenance type required'}), 400
+
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Update maintenance records for all vehicles in the group
+        update_fields = []
+        params = []
+
+        if time_interval_months is not None:
+            update_fields.append("time_interval_months = %s")
+            params.append(time_interval_months)
+
+        if distance_interval_km is not None:
+            update_fields.append("distance_interval_km = %s")
+            params.append(distance_interval_km)
+
+        if not update_fields:
+            return jsonify({'success': False, 'message': 'No criteria provided'}), 400
+
+        params.extend([make, vehicle_type, model, maintenance_type])
+
+        query = f"""
+            UPDATE maintenance_records 
+            SET {', '.join(update_fields)}
+            WHERE vehicle_id IN (
+                SELECT id FROM vehicles 
+                WHERE make = %s AND type = %s AND model = %s
+            ) AND type = %s AND status = 'not'
+        """
+
+        cursor.execute(query, params)
+
+        if cursor.rowcount == 0:
+            return jsonify({'success': False, 'message': 'No maintenance records found to update for this group'}), 404
+
+        conn.commit()
+        return jsonify({'success': True, 'message': f'Maintenance criteria updated for {cursor.rowcount} vehicles'})
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error updating group maintenance criteria: {e}")
+        return jsonify({'success': False, 'message': 'Database error'}), 500
+    finally:
+        if cursor:
+            cursor.close()
 
 if __name__ == '__main__':
     app.run(debug=True)

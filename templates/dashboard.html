@@ -493,10 +493,10 @@
 
         // Initialize dashboard with user data (this would normally come from session/backend)
         function initializeDashboard() {
-            // This would normally be populated from session data
+            // Use user data from the Flask template
             const userData = {
-                fullName: 'Administrator',
-                username: 'admin'
+                fullName: '{{ user.full_name }}',
+                username: '{{ user.username }}'
             };
 
             // Update welcome message
