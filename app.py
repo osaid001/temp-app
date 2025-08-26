@@ -14,16 +14,14 @@ app.secret_key = 'your_secret_key_change_this_in_production'
 ############################### connection #################################
 
 def get_db_connection():
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST", "dpg-d2modeur433s73auu6qg-a"),
-        database=os.getenv("DB_NAME", "army_db"),
-        user=os.getenv("DB_USER", "army_db_user"),
-        password=os.getenv("DB_PASSWORD", "oCfPpl0fp9ycRVHx40l71YLKGMsjoZWZ"),
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
         port=os.getenv("DB_PORT", "5432"),
-        sslmode=os.getenv("DB_SSLMODE", "require"),
+        sslmode=os.getenv("DB_SSLMODE", "disable")
     )
-    return conn
-
 ################################# start ##########################################
 
 @app.route('/')
@@ -4307,5 +4305,6 @@ def update_group_maintenance_criteria():
         if cursor:
             cursor.close()
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
